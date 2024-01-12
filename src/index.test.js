@@ -86,6 +86,17 @@ describe( 'Tree', () => {
 				tree.values = [ 30, 10, 50, 0, 60, 20, 40 ];
 				expect( tree.values ).toStrictEqual([ 0, 10, 20, 30, 40, 50, 60 ]);
 			});
+			test( 'disassociate all previous undetached nodes', () => {
+				const detachedNode = tree.getNodeAt( -1 ).detach();
+				const oldNodes = tree.traverse();
+				expect( detachedNode.isFree ).toBe( false );
+				expect( oldNodes.every( n => !n.isFree ) ).toBe( true );
+				tree.values = [ 30, 10, 50, 0, 60, 20, 40 ];
+				// detached node remains associated.
+				expect( detachedNode.isFree ).toBe( false );
+				// undetached nodes are disassociated.
+				expect( oldNodes.every( n => n.isFree ) ).toBe( true );
+			});
 		});
 		describe( 'ordered value inserts', () => {
 			const testData = [ 0, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 ];
