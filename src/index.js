@@ -298,6 +298,7 @@ class TreeNode {
             this.#stopTreeCleanupWatch();
         }
         this.#treeRef = null;
+        this.#isDetached = true; // always ensure that a freed node's detached flag is set. 
         this.#transition = TreeNode.Transition.COMPLETE
         return this;
     }
@@ -561,9 +562,8 @@ class Tree {
         }
         if( !nodes.length ) {
             if( !this.#nodes.length ) { return }
-            this.#nodes.length = 0;
-            this.#root = this.#rotate();
-            return 
+            this.#root = this.#empty().#rotate();
+            return; 
         }
         nodes = nodes.sort(({ value }, node ) => this.compare( value, node ));
         let node = nodes.shift();
@@ -585,6 +585,7 @@ class Tree {
         }
         /* istanbul ignore next */
         if( hasSameValues ) { return }
+        this.#empty();
         this.#nodes = uniqueNodes;
         this.#root = this.#rotate();
     }
@@ -827,6 +828,16 @@ class Tree {
         const gen = this.genTraversal( options );
         for( let it = gen.next(); !it.done; it = gen.next() ) { cb( it.value ) }
         return nodes;
+    }
+
+    #empty() {
+        const nodes = this.#nodes;
+        do {
+            const node = nodes.pop();
+            if( !node ) { break }
+            node.free();
+        } while( true );
+        return this;
     }
     
     /**

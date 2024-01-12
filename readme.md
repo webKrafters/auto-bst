@@ -26,13 +26,16 @@ const timedMap = new AutoBST(); // defaults to empty tree with default isValueBe
 
 ## constructor(values: Iterable&lt;T&gt;, options?: <a href="#tree-options">TreeOptions&lt;T&gt;</a>)
 
-#### <u id="tree-options">TreeOptions&lt;T&gt;</u>: Object
+- values: optional parameter accepts a parcel of data of any iterable type irrespective of its nature - Sorted or unsorted; unique or with duplicates.
+- options: custom node comparison strategies may be supplied through this optional parameter accepting a payload of the <a href="#tree-options">TreeOptions&lt;T&gt;</a> type. Espcially, when managing complex values, consider utilizing this payload parameter.
+
+<h4 id="tree-options"><u>TreeOptions&lt;T&gt;</u>: Object</h4>
 - TreeOptions&lt;T&gt;.isSameValue?: Criterion&lt;T&gt;
 - TreeOptions&lt;T&gt;.isValueBefore?: Criterion&lt;T&gt;
 
-#### <u id="criterion">Criterion&lt;T&gt;</u>: (value: T, node: TreeNode&lt;T&gt;, this: Tree&lt;T&gt;): boolean
+<h4 id="criterion"><u>Criterion&lt;T&gt;</u> = (value: T, node: TreeNode&lt;T&gt;, this: Tree&lt;T&gt;): boolean</h4>
 
-#### <u>TreeNode&lt;T&gt;</u>: please see <a href="#tree-node">here</a>
+#### <u>TreeNode&lt;T&gt;</u> = please see <a href="#tree-node">here</a>
 
 ## criteria: <a href="#tree-options">TreeOptions&lt;T&gt;</a> - writeonly
 
@@ -59,7 +62,7 @@ setting this property to `undefined` or Tree.DEFAULT will reset it to default
 
 ## size: int - readonly
 
-Computed property: number of entries in the tree
+Property: number of entries in the tree
 
 ## values: Iterable&lt;T&gt;
 
@@ -69,14 +72,14 @@ Setting this property to `undefined` will reset it. Alias: `this.clear()`
 
 ## cleanup(): void
 
-Triggers the immediate dissociation of any longer-living associated objects (such as detached nodes).
+Triggers the immediate disassociation of any longer-living associated objects (such as detached nodes).
 
 <b><i><u>Recommended:</u></i></b> invoke this method before either deleting your tree instance or setting it to null.
      
 
 ## clear(): void
 
-discards all active nodes from the tree.
+disassociates all undetached nodes from the tree.
 
 ## compare(value: T, node: <a href="#tree-node">TreeNode&lt;T&gt;</a>): 0 | 1 | -1
 
@@ -86,17 +89,17 @@ Compares certain value to the value of an undetached node in this tree using the
 
 Generator method for this tree traversal.
 
-#### <u id="traversal-options">TraversalOptions</u>: Object
+<h4 id="traversal-options"><u>TraversalOptions</u>: Object</h4>
 - TraversalOptions.direction?: <a href="#traversal-direction">TraversalDirection</a>[keyof <a href="#traversal-direction">TraversalDirection</a>]
 - TraversalOptions.maxLength?: int
 - TraversalOptions.order?: <a href="#traversal-order">TraversalOrder</a>[keyof <a href="#traversal-order">TraversalOrder</a>]
 - TraversalOptions.start?: int - ***this property may be negative to start -N places from `tree.size`.***
 
-#### <u id="traversal-direction">TraversalDirection</u>: Object
+<h4 id="traversal-direction"><u>TraversalDirection</u>: Object</h4>
 - TraversalDirection.RIGHT: "LTR"
 - TraversalDirection.LEFT: "RTL"
 
-#### <u id="traversal-order">TraversalOrder</u>: Object
+<h4 id="traversal-order"><u>TraversalOrder</u>: Object</h4>
 - TraversalOrder.IN: "IN_ORDER";
 - TraversalOrder.POST: "POST_ORDER";
 - TraversalOrder.PRE: "PRE_ORDER";
@@ -129,7 +132,7 @@ An attempt to insert duplicate values to the tree is a no op.
 
 ## insertNode(node: <a href="#tree-node">TreeNode&lt;T&gt;</a>): this
 
-Re-inserts a detached associated node back into the tree.<br />
+Re-inserts a detached but associated node back into the tree.<br />
 <u>Alternate API:</u> `node.join(...)`
 
 1. An attempt to insert an undetached node is a no op.
@@ -137,18 +140,18 @@ Re-inserts a detached associated node back into the tree.<br />
 
 ## remove(value: T): this
 
-Dissociates from its tree an associated node whose `value` property is `isSameValue` as the `value` parameter.
+Disassociates from its tree an associated node whose `value` property is `isSameValue` as the `value` parameter.
 
 ## removeNode(node: <a href="#tree-node">TreeNode&lt;T&gt;</a>): this
 
-Dissociates an associated node from its tree.<br />
+Disassociates an associated node from its tree.<br />
 <u>Alternate API:</u> `node.free(...)`
 
 - An attempt to remove an unassociated node is a `ReferenceError`.
 
 ## synchronize(node: <a href="#tree-node">TreeNode&lt;T&gt;</a>): this
 
-*This method synchronizes changes in the value property of an associated undetached node with its tree.
+*This method synchronizes changes in the value property of an undetached node with its tree.
 - When a node value property is set to a new value, this method is notified automatically.
 - When a user mutates a node value property, they may use this method to do the synchronization manually. 
 
@@ -163,7 +166,7 @@ Traverses the tree nodes.
 (node: <a href="#tree-node">TreeNode&lt;T&gt;</a>): void<br />
 When this argument is in its default `undefined` state, the method returns an array of the nodes traversed.<br />Otherwise, `void` is returned.
 
-- `options:` optional parameter accepts a payload object containing traversal direction, order and range. This argument, by default, holds the directive for the traditional IN_ORDER traversal (i.e. a right ward in-order traversal of the entire tree).
+- `options:` optional parameter accepts a <a href="#traversal-options">TraversalOptions</a> payload object containing traversal direction, order and range. This argument, by default, holds the directive for the traditional IN_ORDER traversal (i.e. a right ward in-order traversal of the entire tree).
 
 
 ## DEFAULT: DEFAULT_CONSTANT
@@ -174,7 +177,7 @@ static: default settings string
 
 static: traversal direction options
 
-## CriterioinTypes: Readonly&lt;CriterionTypes&gt;
+## CriterionTypes: Readonly&lt;CriterionTypes&gt;
 
 static
 - CriterionTypes.isSameValue: "isSameValue"
@@ -200,7 +203,7 @@ static: traveral order options
 
 ----------------------------------------------------------------
 
-# <b id="tree-node">TreeNode</b>
+<h1 id="tree-node"><b>TreeNode</b></h1>
 
 ## constructor(tree: Tree&lt;T&gt;, value?: T, index?: int)
 
@@ -214,7 +217,7 @@ Nevertheless:
 
 ## children: Array&lt;TreeNode&lt;T&gt;&gt; - readonly
 
-Computed property: holds the left and right child nodes respectively
+Property: holds the left and right child nodes respectively
 
 ## index: int - readonly
 
@@ -323,7 +326,7 @@ static
 
 static: node transition phase options
 
-#### <u id="node-transition">NodeTransition</u>: Object
+</h4 id="node-transition"><u>NodeTransition</u>: Object</h4>
 - NodeTransition.COMPLETE: 0;
 - NodeTransition.DETACHING: -1;
 - NodeTransition.DISASSOCIATING: 2,
