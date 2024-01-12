@@ -74,7 +74,8 @@
     "lint": "eslint --fix",
     "test": "eslint --fix && jest --coverage",
     "test:core": "jest",
-    "test:watch": "eslint --fix && jest --watchAll"
+    "test:watch": "eslint --fix && jest --watchAll",
+    "postbuild": "node ./postbuild.js"
   },
   "types": "dist/index.d.ts",
   "version": "1.0.0"

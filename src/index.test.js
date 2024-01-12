@@ -1,8 +1,3 @@
-/**
- * @typedef {import( '.' ).TreeNode<T>} TreeNode
- * @template [T]
- */
-
 import Tree from '.';
 
 describe( 'Tree', () => {
@@ -1533,8 +1528,3 @@ describe( 'Tree', () => {
 		} );
 	} );
 } );
-
-/**
- * @typedef {import("./").TreeNode<T>} TreeNode
- * @template [T]
- */

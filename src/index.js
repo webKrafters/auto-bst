@@ -2,11 +2,11 @@
 
 /**
  * @callback Criterion
- * @param {V} value
- * @param {TreeNode<V>} node
- * @param {Tree<V>} tree
+ * @param {T} value
+ * @param {TreeNode<T>} node
+ * @param {Tree<T>} tree
  * @returns {boolean} 
- * @template [V]
+ * @template [T]
  */
 
 /** @typedef {"index"|"left"|"right"|"root"} NodeInternals */
@@ -23,22 +23,22 @@
 
 /**
  * @callback PostOrderTraversal
- * @param {TreeNode<V>} [startNode]
+ * @param {TreeNode<T>} [startNode]
  * @param {number} [traversalLength]
  * @param {{count: number}} [visited]
  * @param {boolean} [isChild]
- * @returns {Generator<TreeNode<V>, void>}
- * @template [V]
+ * @returns {Generator<TreeNode<T, void>}
+ * @template [T]
  */
 
 /**
  * @callback PreOrderTraversal
- * @param {TreeNode<V>} [startNode]
+ * @param {TreeNode<T>} [startNode]
  * @param {number} [traversalLength]
  * @param {{count: number}} [visited]
- * @param {TreeNode<V>} [root]
- * @returns {Generator<TreeNode<V>, void>}
- * @template [V]
+ * @param {TreeNode<T>} [root]
+ * @returns {Generator<TreeNode<T>, void>}
+ * @template [T]
  */
 
 /**
@@ -72,17 +72,17 @@
  * @callback TraversalStrategy
  * @param {TraversalDirection[keyof TraversalDirection]} direction
  * @param {number} traversalLength 
- * @param {TreeNode<V>} startNode
- * @returns {Generator<TreeNode<V>, void>} 
- * @template [V]
+ * @param {TreeNode<T>} startNode
+ * @returns {Generator<TreeNode<T>, void>} 
+ * @template [T]
  */
 
 /**
  * @typedef {{
- *  isSameValue?: Criterion<V>,
- *  isValueBefore?: Criterion<V>
+ *  isSameValue?: Criterion<T>,
+ *  isValueBefore?: Criterion<T>
  * }} TreeOptions
- * @template [V]
+ * @template [T]
  */
 
 /**
@@ -98,8 +98,8 @@ const EMPTY_OBJ = Object.freeze({});
 const NODE_INTERNALS = Object.freeze([ 'index', 'isDetached', 'left', 'right', 'root', 'tree', ]);
 
 /**
- * @type {WeakMap<TreeNode<V>, NodeInternalTokensMap>}
- * @template [V]
+ * @type {WeakMap<TreeNode<T>, NodeInternalTokensMap>}
+ * @template [T]
  */
 const nodeAccessMap = new WeakMap();
 
@@ -175,8 +175,8 @@ class TreeNode {
 
 	/**
 	 * @static
-	 * @param {TreeNode<V>} node
-     * @template [V]
+	 * @param {TreeNode<T>} node
+     * @template [T]
 	 */
     static isValid ( node ) { return node instanceof TreeNode }
 
@@ -422,8 +422,8 @@ class Tree {
 
     /**
      * @static
-     * @param {Tree<V>} tree
-     * @template [V]
+     * @param {Tree<T>} tree
+     * @template [T]
      */
     static isValid( tree ) { return tree instanceof Tree }
 
@@ -1075,8 +1075,8 @@ class Tree {
  * Checks if a value equals the current node's value
  * Note: uses Object.is(...) equality check
  * 
- * @type {Criterion<V>}
- * @template [V]
+ * @type {Criterion<T>}
+ * @template [T]
  */
 function isSameValueDefaultFn( value, node ) { return Object.is( value, node.value ) }
 
@@ -1084,8 +1084,8 @@ function isSameValueDefaultFn( value, node ) { return Object.is( value, node.val
  * Checks if a value is less than the current node's value.
  * Note: uses '>' for string and number values and returns false for the rest.
  * 
- * @type {Criterion<V>}
- * @template [V]
+ * @type {Criterion<T>}
+ * @template [T]
  */
 function isValueBeforeDefaultFn( value, node ) {
     return isString( value ) || isNumber( value )
@@ -1094,11 +1094,11 @@ function isValueBeforeDefaultFn( value, node ) {
 }
 
 /**
- * @param {TreeNode<V>} node ancestor node
+ * @param {TreeNode<T>} node ancestor node
  * @param {number} nGenerations how many generations of descendants to collect
  * @param {boolean} [isDescendant = false] is the `node` parameter a descendant of a prior visited node?
- * @return {Generator<TreeNode<V>>}
- * @template [V]
+ * @return {Generator<TreeNode<T>>}
+ * @template [T]
  */
 function* genDescendantsFrom( node, nGenerations, isDescendant = false ) {
     if( node === null || nGenerations === 0 ) { return }
@@ -1108,8 +1108,8 @@ function* genDescendantsFrom( node, nGenerations, isDescendant = false ) {
 }
 
 /**
- * @param {TreeNode<V>} node
- * @template [V]
+ * @param {TreeNode<T>} node
+ * @template [T]
  */
 function registerNodeInternalsFor( node ) {
     /** @type {NodeInternalTokensMap} */
@@ -1137,9 +1137,9 @@ function registerNodeInternalsFor( node ) {
 }
 
 /**
- * @param {TreeNode<V>} node
+ * @param {TreeNode<T>} node
  * @throws {TypeError} on invalid node type
- * @template [V]
+ * @template [T]
  */
 function throwOnInvalidNode( node ) {
     if( !TreeNode.isValid( node ) ) {
@@ -1148,10 +1148,10 @@ function throwOnInvalidNode( node ) {
 }
 
 /**
- * @param {Tree<V>} currentTree
- * @param {TreeNode<V>} node
+ * @param {Tree<T>} currentTree
+ * @param {TreeNode<T>} node
  * @throws {ReferenceError} on invalid node type
- * @template [V]
+ * @template [T]
  */
 function throwOnNodeTreeMismatch( currentTree, node ) {
     if( node.tree !== currentTree ) {
