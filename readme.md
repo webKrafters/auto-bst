@@ -30,8 +30,9 @@ const timedMap = new AutoBST(); // defaults to empty tree with default isValueBe
 - options: custom node comparison strategies may be supplied through this optional parameter accepting a payload of the <a href="#tree-options">TreeOptions&lt;T&gt;</a> type. Espcially, when managing complex values, consider utilizing this payload parameter.
 
 <h4 id="tree-options"><u>TreeOptions&lt;T&gt;</u>: Object</h4>
-- TreeOptions&lt;T&gt;.isSameValue?: Criterion&lt;T&gt;
-- TreeOptions&lt;T&gt;.isValueBefore?: Criterion&lt;T&gt;
+
+- TreeOptions&lt;T&gt;.isSameValue?: Criterion&lt;T&gt;<br />
+- TreeOptions&lt;T&gt;.isValueBefore?: Criterion&lt;T&gt;<br />
 
 <h4 id="criterion"><u>Criterion&lt;T&gt;</u> = (value: T, node: TreeNode&lt;T&gt;, this: Tree&lt;T&gt;): boolean</h4>
 
@@ -40,6 +41,7 @@ const timedMap = new AutoBST(); // defaults to empty tree with default isValueBe
 ## criteria: <a href="#tree-options">TreeOptions&lt;T&gt;</a> - writeonly
 
 Property: sets both `isSameValue` and `isValueBefore` propeties simultaneously.
+
 - omitted properties are ignored.
 - properties set to `undefined` are replaced with the default matching criteria.
 - set to `undefined` to reset both `isSameValue` and `isValueBefore` properties to their internal default functions.
@@ -90,19 +92,22 @@ Compares certain value to the value of an undetached node in this tree using the
 Generator method for this tree traversal.
 
 <h4 id="traversal-options"><u>TraversalOptions</u>: Object</h4>
-- TraversalOptions.direction?: <a href="#traversal-direction">TraversalDirection</a>[keyof <a href="#traversal-direction">TraversalDirection</a>]
-- TraversalOptions.maxLength?: int
-- TraversalOptions.order?: <a href="#traversal-order">TraversalOrder</a>[keyof <a href="#traversal-order">TraversalOrder</a>]
-- TraversalOptions.start?: int - ***this property may be negative to start -N places from `tree.size`.***
+
+- TraversalOptions.direction?: <a href="#traversal-direction">TraversalDirection</a>[keyof <a href="#traversal-direction">TraversalDirection</a>];<br />
+- TraversalOptions.maxLength?: int;<br />
+- TraversalOptions.order?: <a href="#traversal-order">TraversalOrder</a>[keyof <a href="#traversal-order">TraversalOrder</a>];<br />
+- TraversalOptions.start?: int; <b><i>// this property may be negative to start -N places from `tree.size`.</i></b><br />
 
 <h4 id="traversal-direction"><u>TraversalDirection</u>: Object</h4>
-- TraversalDirection.RIGHT: "LTR"
-- TraversalDirection.LEFT: "RTL"
+
+- TraversalDirection.RIGHT: "LTR";<br />
+- TraversalDirection.LEFT: "RTL";<br />
 
 <h4 id="traversal-order"><u>TraversalOrder</u>: Object</h4>
-- TraversalOrder.IN: "IN_ORDER";
-- TraversalOrder.POST: "POST_ORDER";
-- TraversalOrder.PRE: "PRE_ORDER";
+
+- TraversalOrder.IN: "IN_ORDER";<br />
+- TraversalOrder.POST: "POST_ORDER";<br />
+- TraversalOrder.PRE: "PRE_ORDER";<br />
 
 
 ## getNodeAt(index: int): <a href="#tree-node">TreeNode&lt;T&gt;</a>
@@ -127,7 +132,7 @@ Returns the **left-to-right in-order traversal** index of an undetached node in 
 
 Creates and inserts a node constaining the `value` argument into the tree such that the tree remains balanced.
 
-An attempt to insert duplicate values to the tree is a no op.
+- An attempt to insert duplicate values to the tree is a no op.
 
 
 ## insertNode(node: <a href="#tree-node">TreeNode&lt;T&gt;</a>): this
@@ -151,7 +156,8 @@ Disassociates an associated node from its tree.<br />
 
 ## synchronize(node: <a href="#tree-node">TreeNode&lt;T&gt;</a>): this
 
-*This method synchronizes changes in the value property of an undetached node with its tree.
+This method synchronizes changes in the value property of an undetached node with its tree.
+
 - When a node value property is set to a new value, this method is notified automatically.
 - When a user mutates a node value property, they may use this method to do the synchronization manually. 
 
@@ -326,11 +332,12 @@ static
 
 static: node transition phase options
 
-</h4 id="node-transition"><u>NodeTransition</u>: Object</h4>
-- NodeTransition.COMPLETE: 0;
-- NodeTransition.DETACHING: -1;
-- NodeTransition.DISASSOCIATING: 2,
-- NodeTransition.JOINING: 1;
+<h4 id="node-transition"><u>NodeTransition</u>: Object</h4>
+
+- NodeTransition.COMPLETE: 0;<br />
+- NodeTransition.DETACHING: -1;<br />
+- NodeTransition.DISASSOCIATING: 2;<br />
+- NodeTransition.JOINING: 1;<br />
 
 ## License
 
