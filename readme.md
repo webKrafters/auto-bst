@@ -1,4 +1,4 @@
-# Auto-BST
+# Auto-BST (Self-balancing Binary Search Tree)
 
 **Name:** Auto-BST
 
@@ -24,7 +24,9 @@ const timedMap = new AutoBST(); // defaults to empty tree with default isValueBe
 
 # Public Interface
 
-## constructor(values: Iterable&lt;T&gt;, options?: <a href="#tree-options">TreeOptions&lt;T&gt;</a>)
+## Constructor
+
+### constructor(values: Iterable&lt;T&gt;, options?: <a href="#tree-options">TreeOptions&lt;T&gt;</a>)
 
 - values: optional parameter accepts a parcel of data of any iterable type irrespective of its nature - Sorted or unsorted; unique or with duplicates.
 - options: custom node comparison strategies may be supplied through this optional parameter accepting a payload of the <a href="#tree-options">TreeOptions&lt;T&gt;</a> type. Espcially, when managing complex values, consider utilizing this payload parameter.
@@ -38,56 +40,60 @@ const timedMap = new AutoBST(); // defaults to empty tree with default isValueBe
 
 #### <u>TreeNode&lt;T&gt;</u> = please see <a href="#tree-node">here</a>
 
-## criteria: <a href="#tree-options">TreeOptions&lt;T&gt;</a> - writeonly
+## Instance Properties
 
-Property: sets both `isSameValue` and `isValueBefore` propeties simultaneously.
+### criteria: <a href="#tree-options">TreeOptions&lt;T&gt;</a> - writeonly
+
+Sets both `isSameValue` and `isValueBefore` propeties simultaneously.
 
 - omitted properties are ignored.
 - properties set to `undefined` are replaced with the default matching criteria.
 - set to `undefined` to reset both `isSameValue` and `isValueBefore` properties to their internal default functions.
 
-## isDisposing: boolean - readonly
+### isDisposing: boolean - readonly
 
-Property: is set while the tree is in the clean-up process. Clean up process starts when the user invokes the `cleanup(...)` method. 
+Sets while the tree is in the clean-up process. Clean up process starts when the user invokes the `cleanup(...)` method. 
      
-## isSameValue: <a href="#criterion">Criterion&lt;T&gt;</a>
+### isSameValue: <a href="#criterion">Criterion&lt;T&gt;</a>
 
-Property: function to determine if parameter1 is a value equaling the value property of parameter2.
+A function to determine if parameter1 is a value equaling the value property of parameter2.
 
-setting this property to `undefined` or Tree.DEFAULT will reset it to default.
+- Setting this property to `undefined` or Tree.DEFAULT will reset it to default.
 
-## isValueBefore: <a href="#criterion">Criterion&lt;T&gt;</a>
+### isValueBefore: <a href="#criterion">Criterion&lt;T&gt;</a>
 
-Property: function to determine if parameter1 is a value whose node should come before parameter2.
+A function to determine if parameter1 is a value whose node should come before parameter2.
 
-setting this property to `undefined` or Tree.DEFAULT will reset it to default
+- Setting this property to `undefined` or Tree.DEFAULT will reset it to default
 
-## size: int - readonly
+### size: int - readonly
 
-Property: number of entries in the tree
+Number of undetached nodes on the tree
 
-## values: Iterable&lt;T&gt;
+### values: Iterable&lt;T&gt;
 
-Property: Returns Array&lt;T&gt; values of all undetached nodes in the tree. Accepts any Iterable&lt;T&gt; type.
+Array&lt;T&gt; values of all undetached nodes in the tree. Accepts any Iterable&lt;T&gt; type.
 
-Setting this property to `undefined` will reset it. Alias: `this.clear()`
+- Setting this property to `undefined` will reset it. Alias: `this.clear()`
 
-## cleanup(): void
+## Instance Methods
+
+### cleanup(): void
 
 Triggers the immediate disassociation of any longer-living associated objects (such as detached nodes).
 
 <b><i><u>Recommended:</u></i></b> invoke this method before either deleting your tree instance or setting it to null.
      
 
-## clear(): void
+### clear(): void
 
-disassociates all undetached nodes from the tree.
+Disassociates all undetached nodes from the tree.
 
-## compare(value: T, node: <a href="#tree-node">TreeNode&lt;T&gt;</a>): 0 | 1 | -1
+### compare(value: T, node: <a href="#tree-node">TreeNode&lt;T&gt;</a>): 0 | 1 | -1
 
 Compares certain value to the value of an undetached node in this tree using the current `isSameValue` and `isValueBefore` properties.
 
-## genTraversal(options?: TraversalOptions): Generator&lt;<a href="#tree-node">TreeNode&lt;T&gt;</a>&gt;
+### genTraversal(options?: TraversalOptions): Generator&lt;<a href="#tree-node">TreeNode&lt;T&gt;</a>&gt;
 
 Generator method for this tree traversal.
 
@@ -109,15 +115,13 @@ Generator method for this tree traversal.
 - TraversalOrder.POST: "POST_ORDER";<br />
 - TraversalOrder.PRE: "PRE_ORDER";<br />
 
-
-## getNodeAt(index: int): <a href="#tree-node">TreeNode&lt;T&gt;</a>
+### getNodeAt(index: int): <a href="#tree-node">TreeNode&lt;T&gt;</a>
 
 Returns the undetached node located at the supplied index using a left-to-right in-order traversal.
 
 <b><i><u>Attention:</u></i></b> index parameter also accepts a negative integer to obtain the node located -N places from `tree.size`.
     
-
-## indexOf(value: T, start?: int, end?: int): int
+### indexOf(value: T, start?: int, end?: int): int
 
 Returns the **left-to-right in-order traversal** index of an undetached node in the tree whose value is the same as the first argument.
 
@@ -127,15 +131,14 @@ Returns the **left-to-right in-order traversal** index of an undetached node in 
 
 - `end:` optional parameter is assigned `tree.size - 1` by default. When assigned a value exceeding `tree.size - 1`, method searches to until the end of the tree. When negative, method attempts to resolve it by applying `tree.size + end`. When the resolved end index is still less than the start index, method searches only the value at start index. Otherwise, method searches up to and including the resolved end index.
 
-
-## insert(value: T): this
+### insert(value: T): this
 
 Creates and inserts a node constaining the `value` argument into the tree such that the tree remains balanced.
 
 - An attempt to insert duplicate values to the tree is a no op.
 
 
-## insertNode(node: <a href="#tree-node">TreeNode&lt;T&gt;</a>): this
+### insertNode(node: <a href="#tree-node">TreeNode&lt;T&gt;</a>): this
 
 Re-inserts a detached but associated node back into the tree.<br />
 <u>Alternate API:</u> `node.join(...)`
@@ -143,18 +146,18 @@ Re-inserts a detached but associated node back into the tree.<br />
 1. An attempt to insert an undetached node is a no op.
 2. An attempt to insert any node into a tree with which it is not associated is a `ReferenceError`.
 
-## remove(value: T): this
+### remove(value: T): this
 
 Disassociates from its tree an associated node whose `value` property is `isSameValue` as the `value` parameter.
 
-## removeNode(node: <a href="#tree-node">TreeNode&lt;T&gt;</a>): this
+### removeNode(node: <a href="#tree-node">TreeNode&lt;T&gt;</a>): this
 
 Disassociates an associated node from its tree.<br />
 <u>Alternate API:</u> `node.free(...)`
 
 - An attempt to remove an unassociated node is a `ReferenceError`.
 
-## synchronize(node: <a href="#tree-node">TreeNode&lt;T&gt;</a>): this
+### synchronize(node: <a href="#tree-node">TreeNode&lt;T&gt;</a>): this
 
 This method synchronizes changes in the value property of an undetached node with its tree.
 
@@ -164,9 +167,9 @@ This method synchronizes changes in the value property of an undetached node wit
 1. An attempt to perform this op on an undetached node is a no op.
 2. An attempt to perform this op on an unassociated node is a `ReferenceError`.
 
-## traverse(cb?: VoidFunction, options?: <a href="#traversal-options">TraversalOptions</a>): void | Array&lt;<a href="#tree-node">TreeNode&lt;T&gt;</a>&gt;
+### traverse(cb?: VoidFunction, options?: <a href="#traversal-options">TraversalOptions</a>): void | Array&lt;<a href="#tree-node">TreeNode&lt;T&gt;</a>&gt;
 
-Traverses the tree nodes.
+Traverses undetached tree nodes.
 
 - `cb:` optional parameter accepts a callback to be invoked on every traversed node.<br /><b><u>signature:</u></b>
 (node: <a href="#tree-node">TreeNode&lt;T&gt;</a>): void<br />
@@ -174,36 +177,38 @@ When this argument is in its default `undefined` state, the method returns an ar
 
 - `options:` optional parameter accepts a <a href="#traversal-options">TraversalOptions</a> payload object containing traversal direction, order and range. This argument, by default, holds the directive for the traditional IN_ORDER traversal (i.e. a right ward in-order traversal of the entire tree).
 
+## Static Properties
 
-## DEFAULT: DEFAULT_CONSTANT
+### DEFAULT: DEFAULT_CONSTANT
 
-static: default settings string
+Default settings string
 
-## Direction: Readonly&lt;<a href="#traversal-direction">TraversalDirection</a>&gt;
+### Direction: Readonly&lt;<a href="#traversal-direction">TraversalDirection</a>&gt;
 
-static: traversal direction options
+Tree traversal direction options.
 
-## CriterionTypes: Readonly&lt;CriterionTypes&gt;
+### CriterionTypes: Readonly&lt;CriterionTypes&gt;
 
-static
 - CriterionTypes.isSameValue: "isSameValue"
 - CriterionTypes.isValueBefore: "isValueBefore"
 
-## INVALID_NODE_MESSAGE: string
+### INVALID_NODE_MESSAGE: string
 
-static
+Invalid node error message text: when performing tree operations on an invalid node type.
 
-## TREE_MISMATCH_MESSAGE: string
+### TREE_MISMATCH_MESSAGE: string
 
-static
+Tree mismatch error message text: when performing tree operations on an unassociated node.
 
-## isValid(tree: Tree&lt;T&gt;): boolean
+### Order: Readonly&lt;<a href="#traversal-order">TraversalOrder</a>&gt;
 
-static
+Tree traversal order options.
 
-## Order: Readonly&lt;<a href="#traversal-order">TraversalOrder</a>&gt;
+## Static Method
 
-static: traveral order options
+### isValid(tree: Tree&lt;T&gt;): boolean
+
+Verifies a valid tree type.
 
 <br />
 
@@ -211,7 +216,9 @@ static: traveral order options
 
 <h1 id="tree-node"><b>TreeNode</b></h1>
 
-## constructor(tree: Tree&lt;T&gt;, value?: T, index?: int)
+## Constructor
+
+### constructor(tree: Tree&lt;T&gt;, value?: T, index?: int)
 
 *This is an internal constructor used by the Tree to spin up new nodes as needed. 
 
@@ -220,48 +227,49 @@ Nevertheless:
 - `value:` optional parameter accepts the node initial value.
 - `index:` optional parameter accepts this node index on the tree (according to the left-to-right InOrder positioning)
 
+## Instance Properties
 
-## children: Array&lt;TreeNode&lt;T&gt;&gt; - readonly
+### children: Array&lt;TreeNode&lt;T&gt;&gt; - readonly
 
-Property: holds the left and right child nodes respectively
+Holds the left and right child nodes respectively
 
-## index: int - readonly
+### index: int - readonly
 
-Property: left-to-right InOrder positioning of this node on the tree.
+Left-to-Right InOrder index positioning of this node on the tree.
 
 This property changes whenever its tree rebalances.
 
 However, if this node is detached from its tree, then this property may become stale.
 
-## isDetached: boolean - readonly
+### isDetached: boolean - readonly
 
-Property: is set if this node is currently associated to but not an accessible part of its tree.
+Is set if this node is currently associated to but not an accessible part of its tree.
 
-## transition: -1 | 0 | 1 | 2 - readonly
+### transition: -1 | 0 | 1 | 2 - readonly
 
-Property: current transition mode.
+Current transitioning mode. This describes which tree transitioning process this node is currently undergoing.
 
 See <a href="#node-transition">NodeTransition</a>
 
-## isFree: boolean - readonly
+### isFree: boolean - readonly
 
-Property: is set if this node is not associated with any valid tree.
+Is set if this node is not associated with any valid tree.
 
-## left: TreeNode&lt;T&gt; - readonly
+### left: TreeNode&lt;T&gt; - readonly
 
-Property: left child node.
+Left child node.
 
-## right: TreeNode&lt;T&gt; - readonly
+### right: TreeNode&lt;T&gt; - readonly
 
-Property: right child node.
+Right child node.
 
-## root: TreeNode&lt;T&gt; - readonly
+### root: TreeNode&lt;T&gt; - readonly
 
-Property: parent child node.
+Parent node.
 
-## tree: Tree&lt;T&gt;
+### tree: Tree&lt;T&gt;
 
-Property: associated tree instance.
+A tree instance with which this node is associated.
 
 Updating this property disassociates this node from its current tree and moves it to the new tree property.
 
@@ -269,68 +277,68 @@ The disassociated tree self-rebalances <b>(if an undetached node is being disass
 
 The newly associated tree self-rebalances upon inserting this node into it.
 
-## value: T
+### value: T
 
-Property: value stored and held in this node.
+A value stored and held in this node.
 
 Updating this property <b>(when this node is undetached)</b> triggers rebalancing of its associated tree.
 
 Mutating this property is a no op.
 
-## detach(): TreeNode&lt;T&gt;
+## Instance Methods
+
+### detach(): TreeNode&lt;T&gt;
 
 Detaches (but not disassociate) this node from its associated tree. This node becomes inaccessible to its tree until reinstasted.
 
 May use `tree.insertNode(...)` or `node.join(...)` to reinstate this node to its tree.
 
-## free(): TreeNode&lt;T&gt;
+### free(): TreeNode&lt;T&gt;
 
 Detaches (if not already detached) and disassociates this node from its associated tree.
 
-## genAncestors(nGenerations?: number): Generator&lt;TreeNode&lt;T&gt;&gt;
+### genAncestors(nGenerations?: number): Generator&lt;TreeNode&lt;T&gt;&gt;
 
 Generates parent nodes up the tree until `nGenerations` ancestors reached or tree height exhausted.
 
 - `nGenerations:` optional parameter accepts the ancestor position in proximity to this TreeNode. Exmaple: this `node.root` has nGenerations = 1.
 
-## genDescendants(nGenerations?: number): Generator&lt;TreeNode&lt;T&gt;&gt;
+### genDescendants(nGenerations?: number): Generator&lt;TreeNode&lt;T&gt;&gt;
 
 Generates descendant nodes down the tree until `nGenerations` descendants reached or tree depth exhausted.
 
 - `nGenerations:` optional parameter accepts the descendants sorted in ascending order starting from left to right.
 
-## genParentsUntil(ancestorNode?: TreeNode&lt;T&gt;): Generator&lt;TreeNode&lt;T&gt;&gt;
+### genParentsUntil(ancestorNode?: TreeNode&lt;T&gt;): Generator&lt;TreeNode&lt;T&gt;&gt;
 
 Generates parent nodes up the tree until `anscestorNode` is reached - including the `ancestorNode`. Returns empty array if `ancestorNode` not found in the hierarchy.
 
-## getAncestors(nGenerations?: number): Array&lt;TreeNode&lt;T&gt;&gt;
+### getAncestors(nGenerations?: number): Array&lt;TreeNode&lt;T&gt;&gt;
 
 Returns parent nodes up the tree until `nGenerations` ancestors reached or tree height exhausted.
 
 - `nGenerations:` optional parameter accepts the ancestor position in proximity to this TreeNode. Exmaple: this `node.root` has nGenerations = 1.
     
-## getDescendants(nGenerations?: number): Array&lt;TreeNode&lt;T&gt;&gt;
+### getDescendants(nGenerations?: number): Array&lt;TreeNode&lt;T&gt;&gt;
 
 Returns descendant nodes down the tree until `nGenerations` descendants reached or tree depth exhausted.
 
 - `nGenerations:` optional parameter accepts the descendants sorted in ascending order starting from left to right.
 
-## getParentsUntil(ancestorNode: TreeNode<T>): Array&lt;TreeNode&lt;T&gt;&gt;
+### getParentsUntil(ancestorNode: TreeNode<T>): Array&lt;TreeNode&lt;T&gt;&gt;
 
 Generates parent nodes up the tree until `anscestorNode` - including the `ancestorNode`. Returns empty array if `ancestorNode` not found in the hierarchy.
 
-## join(): TreeNode&lt;T&gt;
+### join(): TreeNode&lt;T&gt;
 Inserts this node (when detached) into its associated tree.
 
-Unets this node's `isDeatched` flag.
+Unsets this node's `isDeatched` flag.
 
-## isValid(node: TreeNode&lt;T&gt;): boolean
+## Static Properties
 
-static
+### Transition: Readonly&lt;<a href="#node-transition">NodeTransition</a>&gt;
 
-## Transition: Readonly&lt;<a href="#node-transition">NodeTransition</a>&gt;
-
-static: node transition phase options
+Node transition phase options
 
 <h4 id="node-transition"><u>NodeTransition</u>: Object</h4>
 
@@ -338,6 +346,12 @@ static: node transition phase options
 - NodeTransition.DETACHING: -1;<br />
 - NodeTransition.DISASSOCIATING: 2;<br />
 - NodeTransition.JOINING: 1;<br />
+
+## Static Methods
+
+### isValid(node: TreeNode&lt;T&gt;): boolean
+
+Verifies a valid node type.
 
 ## License
 
