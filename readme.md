@@ -117,13 +117,13 @@ Generator method for this tree traversal.
 
 ### getNodeAt(index: int): <a href="#tree-node">TreeNode&lt;T&gt;</a>
 
-Returns the undetached node located at the supplied index using a left-to-right in-order traversal.
+Returns the undetached node located at the supplied index using a <b>Left-to-Right In-Order</b> traversal.
 
 <b><i><u>Attention:</u></i></b> index parameter also accepts a negative integer to obtain the node located -N places from `tree.size`.
     
 ### indexOf(value: T, start?: int, end?: int): int
 
-Returns the **left-to-right in-order traversal** index of an undetached node in the tree whose value is the same as the first argument.
+Returns the **Left-to-Right In-Order** traversal index of an undetached node in the tree whose value is the same as the first argument.
 
 <b><i><u>Attention:</u></i></b> may provide a ranged search through the `start` and the `end` optional arguments.
 
@@ -225,7 +225,7 @@ Verifies a valid tree type.
 Nevertheless:
 - `tree:` parameter accepts a reference to the tree creating this node.
 - `value:` optional parameter accepts the node initial value.
-- `index:` optional parameter accepts this node index on the tree (according to the left-to-right InOrder positioning)
+- `index:` optional parameter accepts this node index on the tree (according to the <b>Left-to-Right In-Order</b> positioning)
 
 ## Instance Properties
 
@@ -235,7 +235,7 @@ Holds the left and right child nodes respectively
 
 ### index: int - readonly
 
-Left-to-Right InOrder index positioning of this node on the tree.
+<b>Left-to-Right In-Order</b> index positioning of this node on the tree.
 
 This property changes whenever its tree rebalances.
 
@@ -244,12 +244,6 @@ However, if this node is detached from its tree, then this property may become s
 ### isDetached: boolean - readonly
 
 Is set if this node is currently associated to but not an accessible part of its tree.
-
-### transition: -1 | 0 | 1 | 2 - readonly
-
-Current transitioning mode. This describes which tree transitioning process this node is currently undergoing.
-
-See <a href="#node-transition">NodeTransition</a>
 
 ### isFree: boolean - readonly
 
@@ -266,6 +260,12 @@ Right child node.
 ### root: TreeNode&lt;T&gt; - readonly
 
 Parent node.
+
+### transition: -1 | 0 | 1 | 2 - readonly
+
+Current transitioning mode. This describes which tree transitioning process this node is currently undergoing.
+
+See <a href="#node-transition">NodeTransition</a>
 
 ### tree: Tree&lt;T&gt;
 
