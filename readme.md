@@ -82,8 +82,7 @@ Array&lt;T&gt; values of all undetached nodes in the tree. Accepts any Iterable&
 
 Triggers the immediate disassociation of any longer-living associated objects (such as detached nodes).
 
-<b><i><u>Recommended:</u></i></b> invoke this method before either deleting your tree instance or setting it to null.
-     
+<b><i><u>Recommended:</u></i></b> invoke this method before either deleting your tree instance or setting it to null.   
 
 ### clear(): void
 
@@ -136,7 +135,6 @@ Returns the **Left-to-Right In-Order** traversal index of an undetached node in 
 Creates and inserts a node constaining the `value` argument into the tree such that the tree remains balanced.
 
 - An attempt to insert duplicate values to the tree is a no op.
-
 
 ### insertNode(node: <a href="#tree-node">TreeNode&lt;T&gt;</a>): this
 
@@ -337,6 +335,7 @@ Returns descendant nodes down the tree until `nGenerations` descendants reached 
 Generates parent nodes up the tree until `anscestorNode` - including the `ancestorNode`. Returns empty array if `ancestorNode` not found in the hierarchy.
 
 ### join(): TreeNode&lt;T&gt;
+  
 Inserts this node (when detached) into its associated tree.
 
 Unsets this node's `isDeatched` flag.
