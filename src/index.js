@@ -14,11 +14,11 @@
 /** @typedef {{[K in NodeInternals]: number}} NodeInternalTokensMap */
 
 /**
- * @typedef NodeTransition
- * @property {0} NodeTransition.COMPLETE
- * @property {-1} NodeTransition.DETACHING
- * @property {2} NodeTransition.DISASSOCIATING
- * @property {1} NodeTransition.JOINING
+ * @typedef Transition
+ * @property {0} Transition.COMPLETE
+ * @property {-1} Transition.DETACHING
+ * @property {2} Transition.DISASSOCIATING
+ * @property {1} Transition.JOINING
  */
 
 /**
@@ -27,7 +27,7 @@
  * @param {number} [traversalLength]
  * @param {{count: number}} [visited]
  * @param {boolean} [isChild]
- * @returns {Generator<TreeNode<T, void>}
+ * @returns {Generator<TreeNode<T>, void>}
  * @template [T]
  */
 
@@ -159,19 +159,11 @@ class TreeNode {
     /** @type {TreeNode<T>} */ #left = null;
     /** @type {TreeNode<T>} */ #right = null;
     /** @type {TreeNode<T>} */ #root = null;
-    /** @type {NodeTransition[ keyof NodeTransition]} */
-    #transition = TreeNode.Transition.COMPLETE;
+    /** @type {Transition[ keyof Transition]} */
+    #transition = Tree.TransitionType.COMPLETE;
     /** @type {WeakRef<Tree<T>>} */ #treeRef = null;
     /** @type {UnsubscribeFn} */ #unsubTreeCleanup = null;
     /** @type {T} */ #value;
-
-    /** @type {Readonly<NodeTransition>} */
-    static Transition = Object.freeze({
-        COMPLETE: 0,
-        DETACHING: -1,
-        DISASSOCIATING: 2,
-        JOINING: 1
-    });
 
 	/**
 	 * @static
@@ -282,24 +274,24 @@ class TreeNode {
      */
     detach() {
         if( this.#isDetached ) { return this }
-        this.#transition = TreeNode.Transition.DETACHING;
+        this.#transition = Tree.TransitionType.DETACHING;
         this.#remove();
         this.#unsubTreeCleanup = this.tree?.onCleanup(() => this.free());
-        this.#transition = TreeNode.Transition.COMPLETE;
+        this.#transition = Tree.TransitionType.COMPLETE;
         return this;
     }
 
     /** completely dissociate self from its tree */
     free() {
         if( this.isFree ) { return this }
-        this.#transition = TreeNode.Transition.DISASSOCIATING;
+        this.#transition = Tree.TransitionType.DISASSOCIATING;
         if( !this.tree.isDisposing ) {
             !this.#isDetached && this.#remove();
             this.#stopTreeCleanupWatch();
         }
         this.#treeRef = null;
         this.#isDetached = true; // always ensure that a freed node's detached flag is set. 
-        this.#transition = TreeNode.Transition.COMPLETE
+        this.#transition = Tree.TransitionType.COMPLETE
         return this;
     }
 
@@ -367,11 +359,11 @@ class TreeNode {
             this.#isDetached = true;
             throw new ReferenceError( 'Cannot join node. Referenced tree does not exist.' );
         }
-        this.#transition = TreeNode.Transition.JOINING;
+        this.#transition = Tree.TransitionType.JOINING;
         tree.insertNode( this );
         this.#stopTreeCleanupWatch();
         this.#isDetached = false; 
-        this.#transition = TreeNode.Transition.COMPLETE;
+        this.#transition = Tree.TransitionType.COMPLETE;
         return this;
     }
 
@@ -412,7 +404,7 @@ class Tree {
      * @static
      * @type {Readonly<{[K in "isSameValue"|"isValueBefore"]: K}>}
      */
-    static CriterionTypes = Object.freeze({
+    static CriterionType = Object.freeze({
         isSameValue: 'isSameValue',
         isValueBefore: 'isValueBefore'
     });
@@ -438,6 +430,14 @@ class Tree {
         PRE: 'PRE_ORDER'
     });
 
+    /** @type {Readonly<Transition>} */
+    static TransitionType = Object.freeze({
+        COMPLETE: 0,
+        DETACHING: -1,
+        DISASSOCIATING: 2,
+        JOINING: 1
+    });
+
     /** @type {boolean} */ #isDisposing = false;
     /** @type {Criterion<T>} */ #isSameValue;
     /** @type {Criterion<T>} */ #isValueBefore;
@@ -460,7 +460,7 @@ class Tree {
 	 */
 	constructor( values = [], options = EMPTY_OBJ ) {
         const criteria = {};
-        for( const k in Tree.CriterionTypes ) {
+        for( const k in Tree.CriterionType ) {
             criteria[ k ] = k in options ? options[ k ] : undefined;
         }
         this.criteria = criteria;
@@ -494,7 +494,7 @@ class Tree {
     } ) {
         const opts = {}
         for( const c in criteria ) {
-            if( !( c in Tree.CriterionTypes ) ) {
+            if( !( c in Tree.CriterionType ) ) {
                 throw new TypeError( `Unrecognized criteria key "${ c }".` );
             }
             let cFn =  criteria[ c ];
@@ -506,12 +506,12 @@ class Tree {
             if( cFn === this[ c ] ) { continue }
             if( cFn === Tree.DEFAULT ) {
                 switch( c ) {
-                    case Tree.CriterionTypes.isSameValue: {
+                    case Tree.CriterionType.isSameValue: {
                         /* istanbul ignore else */
                         if( this.#isSameValue !== isSameValueDefaultFn ) { opts.isSameValue = isSameValueDefaultFn }
                         break;
                     }
-                    case Tree.CriterionTypes.isValueBefore: {
+                    case Tree.CriterionType.isValueBefore: {
                         /* istanbul ignore else */
                         if( this.#isValueBefore !== isValueBeforeDefaultFn ) { opts.isValueBefore = isValueBeforeDefaultFn }
                         break;
@@ -525,8 +525,8 @@ class Tree {
             opts[ c ] = cFn;
         }
         if( !Object.keys( opts ).length ) { return }
-        if( Tree.CriterionTypes.isSameValue in opts ) { this.#isSameValue = opts.isSameValue }
-        if( Tree.CriterionTypes.isValueBefore in opts ) { this.#isValueBefore = opts.isValueBefore }
+        if( Tree.CriterionType.isSameValue in opts ) { this.#isSameValue = opts.isSameValue }
+        if( Tree.CriterionType.isValueBefore in opts ) { this.#isValueBefore = opts.isValueBefore }
         this.#refresh();
     }
 
@@ -734,7 +734,7 @@ class Tree {
         throwOnInvalidNode( node );
         throwOnNodeTreeMismatch( this, node );
         if( !node.isDetached ) { return this }
-        if( node.transition !== TreeNode.Transition.JOINING ) {
+        if( node.transition !== Tree.TransitionType.JOINING ) {
             node.join();
             return this;
         }
@@ -765,8 +765,8 @@ class Tree {
     removeNode( node ) {
         throwOnInvalidNode( node );
         throwOnNodeTreeMismatch( this, node );
-        if( node.transition !== TreeNode.Transition.DETACHING &&
-            node.transition !== TreeNode.Transition.DISASSOCIATING
+        if( node.transition !== Tree.TransitionType.DETACHING &&
+            node.transition !== Tree.TransitionType.DISASSOCIATING
         ) {
             node.free();
             return this;

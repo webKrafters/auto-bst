@@ -82,8 +82,7 @@ Array&lt;T&gt; values of all undetached nodes in the tree. Accepts any Iterable&
 
 Triggers the immediate disassociation of any longer-living associated objects (such as detached nodes).
 
-<b><i><u>Recommended:</u></i></b> invoke this method before either deleting your tree instance or setting it to null.
-     
+<b><i><u>Recommended:</u></i></b> invoke this method before either deleting your tree instance or setting it to null.   
 
 ### clear(): void
 
@@ -137,7 +136,6 @@ Creates and inserts a node constaining the `value` argument into the tree such t
 
 - An attempt to insert duplicate values to the tree is a no op.
 
-
 ### insertNode(node: <a href="#tree-node">TreeNode&lt;T&gt;</a>): this
 
 Re-inserts a detached but associated node back into the tree.<br />
@@ -187,10 +185,10 @@ Default settings string
 
 Tree traversal direction options.
 
-### CriterionTypes: Readonly&lt;CriterionTypes&gt;
+<h3 id="criterion-type"> CriterionType: Readonly&lt;CriterionType&gt;</h3>
 
-- CriterionTypes.isSameValue: "isSameValue"
-- CriterionTypes.isValueBefore: "isValueBefore"
+- CriterionType.isSameValue: "isSameValue"
+- CriterionType.isValueBefore: "isValueBefore"
 
 ### INVALID_NODE_MESSAGE: string
 
@@ -199,6 +197,13 @@ Invalid node error message text: when performing tree operations on an invalid n
 ### TREE_MISMATCH_MESSAGE: string
 
 Tree mismatch error message text: when performing tree operations on an unassociated node.
+
+<h3 id="transition-type"> TransitionType: Readonly&lt;Transition&gt;</h3>
+
+- Transition.COMPLETE: 0;<br />
+- Transition.DETACHING: -1;<br />
+- Transition.DISASSOCIATING: 2;<br />
+- Transition.JOINING: 1;<br />
 
 ### Order: Readonly&lt;<a href="#traversal-order">TraversalOrder</a>&gt;
 
@@ -265,7 +270,7 @@ Parent node.
 
 Current transitioning mode. This describes which tree transitioning process this node is currently undergoing.
 
-See <a href="#node-transition">NodeTransition</a>
+See <a href="#transition-type">TransitionType</a>
 
 ### tree: Tree&lt;T&gt;
 
@@ -330,28 +335,10 @@ Returns descendant nodes down the tree until `nGenerations` descendants reached 
 Generates parent nodes up the tree until `anscestorNode` - including the `ancestorNode`. Returns empty array if `ancestorNode` not found in the hierarchy.
 
 ### join(): TreeNode&lt;T&gt;
+  
 Inserts this node (when detached) into its associated tree.
 
 Unsets this node's `isDeatched` flag.
-
-## Static Properties
-
-### Transition: Readonly&lt;<a href="#node-transition">NodeTransition</a>&gt;
-
-Node transition phase options
-
-<h4 id="node-transition"><u>NodeTransition</u>: Object</h4>
-
-- NodeTransition.COMPLETE: 0;<br />
-- NodeTransition.DETACHING: -1;<br />
-- NodeTransition.DISASSOCIATING: 2;<br />
-- NodeTransition.JOINING: 1;<br />
-
-## Static Methods
-
-### isValid(node: TreeNode&lt;T&gt;): boolean
-
-Verifies a valid node type.
 
 ## License
 
