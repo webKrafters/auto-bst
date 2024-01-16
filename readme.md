@@ -138,7 +138,7 @@ Creates and inserts a node constaining the `value` argument into the tree such t
 
 ### insertNode(node: <a href="#tree-node">TreeNode&lt;T&gt;</a>): this
 
-Re-inserts a detached but associated node back into the tree.<br />
+Re-inserts either a free node into a tree or a detached but associated node back into its tree.<br />
 <u>Alternate API:</u> `node.join(...)`
 
 1. An attempt to insert an undetached node is a no op.
@@ -154,6 +154,14 @@ Disassociates an associated node from its tree.<br />
 <u>Alternate API:</u> `node.free(...)`
 
 - An attempt to remove an unassociated node is a `ReferenceError`.
+
+### rotate(): this
+
+Balances this tree.
+
+- Rarely ever needed as this tree is self-balancing.
+- It may come in handy for unit test mock purposes. 
+- An attempt to perform this op on a balanced tree is a no op.
 
 ### synchronize(node: <a href="#tree-node">TreeNode&lt;T&gt;</a>): this
 

@@ -852,7 +852,7 @@ describe( 'Tree', () => {
 				});
 			} );
 			test( 'adjusts outdated node index property', () => {
-				const tree = new Tree( testValues );
+				let tree = new Tree( testValues );
 				const origNode2 = tree.getNodeAt( 2 ).detach();
 				expect( tree.getNodeAt( 2 ) ).toBeUndefined();
 				expect({
@@ -891,12 +891,28 @@ describe( 'Tree', () => {
 						value: testValues[ 2 ]
 					})
 				);
+				tree = null;
 			} );
 			test( 'ignores attempt to re-insert an undetached node', () => {
 				const childNode = tree.getNodeAt( 1 );
 				const nodeJoinSpy = jest.spyOn( childNode, 'join' );
 				tree.insertNode( childNode );
 				expect( nodeJoinSpy ).not.toHaveBeenCalled();
+			} );
+			test( 'accepts unassoicated node', () => {
+				let tree = new Tree(  testValues );
+				const freeNode = tree.getNodeAt( 1 ).free();
+				expect( tree.values.indexOf( freeNode.value ) ).toBe( -1 );
+				expect( freeNode.isDetached ).toBe( true );
+				expect( freeNode.isFree ).toBe( true );
+				try { freeNode.join() } catch( e ) {
+					expect( tree.values.indexOf( freeNode.value ) ).toBe( -1 );
+					expect( e ).toBeInstanceOf( ReferenceError );
+					expect( e.message ).toBe( 'Cannot join node. Referenced tree does not exist.' );
+				}
+				expect(() => tree.insertNode( freeNode )).not.toThrow();
+				expect( tree.values.indexOf( freeNode.value ) ).not.toBe( -1 );
+				tree = null;
 			} );
 			describe( 'Argument validation', () => {
 				test( 'throws TypeError on attempt to insert invalid node', () => {
@@ -978,6 +994,123 @@ describe( 'Tree', () => {
 				detachedNodeFreeSpy.mockRestore();
 				node0FreeSpy = node2FreeSpy = detachedNodeFreeSpy = null;
 				testNode0 = testNode2 = detachedNode = tree = null;
+			} );
+		} );
+		describe( 'rotate(...)', () => {
+			test( 'is automatically scheduled on writes', () => {
+				jest.useFakeTimers();
+				let tree = new Tree([{ a: -4 }, { a: 6 }, { a: 0 }, { a: 9 }], {
+					isSameValue: ( v, n ) => v.a === n.value.a,
+					isValueBefore: ( v, n ) => v.a < n.value.a
+				} );
+				let treeRotateSpy = jest.spyOn( tree, 'rotate' );
+
+				expect( global.setTimeout ).toHaveBeenCalled();
+				expect( treeRotateSpy ).not.toHaveBeenCalled();
+				jest.runOnlyPendingTimers();
+				expect( treeRotateSpy ).toHaveBeenCalled();
+
+				global.setTimeout.mockClear();
+				treeRotateSpy.mockClear();
+				tree.values = [{ a: 5 }, { a: 32 }, { a: 66 }, { a: 1 }];
+				expect( treeRotateSpy ).not.toHaveBeenCalled();
+				expect( global.setTimeout ).toHaveBeenCalled();
+				jest.runOnlyPendingTimers();
+				expect( treeRotateSpy ).toHaveBeenCalled();
+				
+				const oldNode2 = tree.getNodeAt( 2 );
+				
+				global.setTimeout.mockClear();
+				treeRotateSpy.mockClear();
+				oldNode2.value = { a: 72 };
+				expect( treeRotateSpy ).not.toHaveBeenCalled();
+				expect( global.setTimeout ).toHaveBeenCalled();
+				jest.runOnlyPendingTimers();
+				expect( treeRotateSpy ).toHaveBeenCalled();
+
+				global.setTimeout.mockClear();
+				treeRotateSpy.mockClear();
+				tree.removeNode( oldNode2 );
+				expect( treeRotateSpy ).not.toHaveBeenCalled();
+				expect( global.setTimeout ).toHaveBeenCalled();
+				jest.runOnlyPendingTimers();
+				expect( treeRotateSpy ).toHaveBeenCalled();
+
+				global.setTimeout.mockClear();
+				treeRotateSpy.mockClear();
+				tree.insertNode( oldNode2 );
+				expect( treeRotateSpy ).not.toHaveBeenCalled();
+				expect( global.setTimeout ).toHaveBeenCalled();
+				jest.runOnlyPendingTimers();
+				expect( treeRotateSpy ).toHaveBeenCalled();
+
+				global.setTimeout.mockClear();
+				treeRotateSpy.mockClear();
+				oldNode2.value.a = 24;
+				tree.synchronize( oldNode2 );
+				expect( treeRotateSpy ).not.toHaveBeenCalled();
+				expect( global.setTimeout ).toHaveBeenCalled();
+				jest.runOnlyPendingTimers();
+				expect( treeRotateSpy ).toHaveBeenCalled();
+
+				jest.useRealTimers();
+				treeRotateSpy.mockRestore();
+				treeRotateSpy = tree = null;
+			} );
+			test( 'no automatic scheduling on writes attempts producing no new changes', () => {
+				let testValues = [{ a: -2 }, { a: 3 }, { a: 0 }, { a: 9 }];
+				jest.useFakeTimers();
+				let tree = new Tree( testValues, {
+					isSameValue: ( v, n ) => v.a === n.value.a,
+					isValueBefore: ( v, n ) => v.a < n.value.a
+				} );
+				let treeRotateSpy = jest.spyOn( tree, 'rotate' );
+				jest.runOnlyPendingTimers();
+				global.setTimeout.mockClear();
+				treeRotateSpy.mockClear();
+				
+				tree.values = [ ...testValues ];
+				expect( global.setTimeout ).not.toHaveBeenCalled();
+				expect( treeRotateSpy ).not.toHaveBeenCalled();
+				
+				const oldNode2 = tree.getNodeAt( 2 );
+				
+				oldNode2.value = { ...oldNode2.value };
+				expect( global.setTimeout ).not.toHaveBeenCalled();
+				expect( treeRotateSpy ).not.toHaveBeenCalled();
+
+				tree.insertNode( oldNode2 );
+				expect( global.setTimeout ).not.toHaveBeenCalled();
+				expect( treeRotateSpy ).not.toHaveBeenCalled();
+
+				oldNode2.value.a = oldNode2.value.a;
+				tree.synchronize( oldNode2 );
+				expect( global.setTimeout ).not.toHaveBeenCalled();
+				expect( treeRotateSpy ).not.toHaveBeenCalled();
+
+				jest.useRealTimers();
+				treeRotateSpy.mockRestore();
+				treeRotateSpy = tree = null;
+			} );
+			test( 'attempt on an already balanced tree is a no op', () => {
+				jest.useFakeTimers();
+				let tree = new Tree([ -2, 3, 0, 9 ]);
+				jest.runOnlyPendingTimers();
+				global.clearTimeout.mockClear();
+				tree.rotate();
+				expect( global.clearTimeout ).not.toHaveBeenCalled();
+				jest.useRealTimers();
+				tree = null;
+			} );
+			test( 'attempt on an already balanced tree is a no op', () => {
+				jest.useFakeTimers();
+				let tree = new Tree([ -2, 3, 0, 9 ]);
+				jest.runOnlyPendingTimers();
+				global.clearTimeout.mockClear();
+				tree.rotate();
+				expect( global.clearTimeout ).not.toHaveBeenCalled();
+				jest.useRealTimers();
+				tree = null;
 			} );
 		} );
 		describe( 'synchronize(...)', () => {
