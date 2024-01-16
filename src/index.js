@@ -206,8 +206,8 @@ class TreeNode {
     /** @readonly */
     get children() {
         const children = [];
-        this.#left && children.push( this.#left );
-        this.#right && children.push( this.#right );
+        this.left && children.push( this.left );
+        this.right && children.push( this.right );
         return children;
     }
     
@@ -236,13 +236,22 @@ class TreeNode {
     get isFree() { return !Tree.isValid( this.tree ) }
 
     /** @readonly */
-	get left(){ return this.#left }
+	get left(){
+        this.tree?.rotate();
+        return this.#left;
+    }
 
 	/** @readonly */
-	get right(){ return this.#right }
+	get right(){
+        this.tree?.rotate();
+        return this.#right;
+     }
 
 	/** @readonly */
-	get root() { return this.#root }
+	get root() {
+        this.tree?.rotate();
+        return this.#root;
+    }
 
     get tree(){ return this.#treeRef?.deref() }
 
@@ -300,6 +309,7 @@ class TreeNode {
      * @returns {Generator<TreeNode<T>>} parent nodes up the tree until `nGenerations` ancestors reached or tree height exhausted
      */
     *genAncestors( nGenerations = Number.POSITIVE_INFINITY ) {
+        this.tree?.rotate();
         for( let parent = this.root, i = 0; i < nGenerations && parent !== null; i++, parent = parent.root ) {
             yield parent;
         }
@@ -310,6 +320,7 @@ class TreeNode {
      * @returns {Generator<TreeNode<T>>} descendant nodes down the tree until `nGenerations` descendants reached or tree depth exhausted
      */
     *genDescendants( nGenerations = Number.POSITIVE_INFINITY ) {
+        this.tree?.rotate();
         yield* genDescendantsFrom( this, nGenerations );
     }
 
@@ -318,6 +329,7 @@ class TreeNode {
      * @returns {Generator<TreeNode<T>>} parent nodes up the tree until `anscestorNode`. Returns empty array if `ancestorNode` not found in the hierarchy
      */
     *genParentsUntil( ancestorNode ) {
+        this.tree?.rotate();
         for( let parent = this.root; parent !== null; parent = parent.root ) {
             yield parent;
             if( parent === ancestorNode ) { break }
@@ -438,6 +450,8 @@ class Tree {
         JOINING: 1
     });
 
+    /** @type {NodeJS.Timeout} */ #autoRotateTimer = null;
+    /** @type {boolean} */ #isBalanced = true;
     /** @type {boolean} */ #isDisposing = false;
     /** @type {Criterion<T>} */ #isSameValue;
     /** @type {Criterion<T>} */ #isValueBefore;
@@ -447,9 +461,9 @@ class Tree {
      */
     #nodes = [];
 
-    /** @type {TreeNode<T>} */ #root = null;
-
     /** @type {Publisher} */ #publisher = new Publisher();
+
+    /** @type {TreeNode<T>} */ #root = null;
 
 	/**
      * Note: `options.isSameValue` config property uses `Object.is()` equality check out of the box
@@ -561,8 +575,8 @@ class Tree {
             throw e;
         }
         if( !nodes.length ) {
-            if( !this.#nodes.length ) { return }
-            this.#root = this.#empty().#rotate();
+            this.#nodes.length &&
+            this.#empty().#scheduleRotation( 0 );
             return; 
         }
         nodes = nodes.sort(({ value }, node ) => this.compare( value, node ));
@@ -578,7 +592,7 @@ class Tree {
                 node[ nodeAccessMap.get( node ).index ] = uLen;
                 uniqueNodes.push( node );
                 /* istanbul ignore next */
-                if( hasSameValues && ( !this.#isSameValue( node.value, this.#nodes[ uLen - 1 ], this ) || uLen === this.size ) ) {
+                if( hasSameValues && ( uLen === this.size || !this.#isSameValue( node.value, this.#nodes[ uLen ], this ) ) ) {
                     hasSameValues = false;
                 }
             }
@@ -587,7 +601,7 @@ class Tree {
         if( hasSameValues ) { return }
         this.#empty();
         this.#nodes = uniqueNodes;
-        this.#root = this.#rotate();
+        this.#scheduleRotation();
     }
 
     /**
@@ -629,6 +643,7 @@ class Tree {
      * @see TraversalOptions
      */
     *genTraversal( options = EMPTY_OBJ ) {
+        this.rotate();
         if( this.#root === null ) { return }
         const len = this.#nodes.length;
         let {
@@ -732,6 +747,10 @@ class Tree {
      */
     insertNode( node ) {
         throwOnInvalidNode( node );
+        if( node.isFree ) {
+            node.tree = this;
+            return this;
+        }
         throwOnNodeTreeMismatch( this, node );
         if( !node.isDetached ) { return this }
         if( node.transition !== Tree.TransitionType.JOINING ) {
@@ -774,6 +793,14 @@ class Tree {
         return this.#updateNodeAt( node.index );
     }
 
+    rotate() {
+        if( this.#isBalanced ) { return this }
+        clearTimeout( this.#autoRotateTimer );
+        this.#root = this.#makeRotation();
+        this.#isBalanced = true;
+        return this;
+    };
+
     /**
      * Ensures that changes in node value are balanced
      * 
@@ -794,18 +821,11 @@ class Tree {
             return this;
         }
         this.#nodes.splice( iIndex, 0, node );
-        if( iIndex < oldIndex ) {
-            for( let i = iIndex; i <= oldIndex; i++ ) {
-                node = this.#nodes[ i ];
-                node[ nodeAccessMap.get( node ).index ] = i;
-            }
-            return this;
-        }
-        for( let i = oldIndex; i <= iIndex; i++ ) {
+        for( let [ i, n ] = iIndex < oldIndex ? [ iIndex, oldIndex ] : [ oldIndex, iIndex ]; i <= n; i++ ) {
             node = this.#nodes[ i ];
             node[ nodeAccessMap.get( node ).index ] = i;
         }
-        return this;
+        return this.#scheduleRotation();
     }
 
     /**
@@ -825,6 +845,7 @@ class Tree {
         if( typeof cb !== 'function' ) {
             throw new TypeError( 'Invalid `cb` argument supplied to `traverse` method. Void function expected' );
         }
+        this.rotate();
         const gen = this.genTraversal( options );
         for( let it = gen.next(); !it.done; it = gen.next() ) { cb( it.value ) }
         return nodes;
@@ -920,6 +941,23 @@ class Tree {
         return this.#updateNodeAt( insertionIndex, node );
     }
 
+    /**
+     * @param {number} [start] start rotation at this index
+     * @param {number} [end] end rotation at this index
+     * @returns {TreeNode<T>} tree/subtree root
+     */
+    #makeRotation( start = 0, end = this.#nodes.length - 1 ) {
+        if( start > end ) { return null }
+        const mid = Math.floor( ( start + end ) / 2 );
+        const root = this.#nodes[ mid ];
+        /* istanbul ignore else */
+        if( root ) {
+            root[ nodeAccessMap.get( root ).left ] = this.#makeRotation( start, mid - 1 );
+            root[ nodeAccessMap.get( root ).right ] = this.#makeRotation( mid + 1, end );
+        }
+        return root;
+    }
+
     /** @type {PostOrderTraversal<T>} */
     *#ltrPostOrder(
         startNode = this.#nodes[ 0 ],
@@ -982,23 +1020,6 @@ class Tree {
         this.clear();
         this.values = values;
         return this;
-    }
-
-    /**
-     * @param {number} [start] start rotation at this index
-     * @param {number} [end] end rotation at this index
-     * @returns {TreeNode<T>} tree/subtree root
-     */
-    #rotate( start = 0, end = this.#nodes.length - 1 ) {
-        if( start > end ) { return null }
-        const mid = Math.floor( ( start + end ) / 2 );
-        const root = this.#nodes[ mid ];
-        /* istanbul ignore else */
-        if( root ) {
-            root[ nodeAccessMap.get( root ).left ] = this.#rotate( start, mid - 1 );
-            root[ nodeAccessMap.get( root ).right ] = this.#rotate( mid + 1, end );
-        }
-        return root;
     }
     
     /** @type {PostOrderTraversal<T>} */
@@ -1064,6 +1085,14 @@ class Tree {
         yield* this.#rtlPreOrder( startNode, traversalLength, visited, root.left );
     }
 
+    /** @param {number} [delay] */
+    #scheduleRotation( delay = 3e4 ) {
+        if( !this.#isBalanced ) { return this }
+        this.#isBalanced = false;
+        this.#autoRotateTimer = setTimeout( () => this.rotate(), delay );
+        return this;
+    }
+
     /**
      * @param {number} index 
      * @param {TreeNode<T>} [newNode] Inserts into index when newNode present. Otherwise, removes node at index.
@@ -1077,8 +1106,7 @@ class Tree {
             const node =  nodes[ i ];
             node[ nodeAccessMap.get( node ).index ] = i;
         }
-        this.#root = this.#rotate();
-        return this;
+        return this.#scheduleRotation();
     }
 }
 
