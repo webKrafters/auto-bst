@@ -7,10 +7,10 @@
     "declaration": true,
     // go to js file when using IDE functions like
     // "Go to Definition" in VSCode
-    "declarationMap": true,
+    // "declarationMap": true,
     // This compiler run should
     // only output d.ts files
-    "emitDeclarationOnly": true,
+    // "emitDeclarationOnly": true,
     "esModuleInterop": true,
     "isolatedModules": true,
     "moduleResolution": "nodenext",
@@ -27,7 +27,7 @@
   // Change the following to match your project
   "exclude": [
 	  "src/**/test",
-		"src/**/*.test.js"
+		"src/**/*.test.ts"
   ],
   "include": [ "src/**/*" ]
 }
