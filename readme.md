@@ -7,11 +7,15 @@ npm i -S @webkrafters/auto-bst
 
 # Description
 
-Self-balancing binary search tree data structure for typescripters and javascript users. 
+Self-balancing binary search tree data structure for typescripters and javascript users.
 
-Tree contents are automatically **deduped** and **sorted** according to either the user supplied comparer functions when available or the default ones otherwise.
+Tree contents are automatically **deduped** and **sorted** according to either client injected criteria when available or the default ones otherwise.
 
 **Automatically rebalances when properties are set to new values.**
+
+## This is not an AVL Tree.
+
+This tree is complete at all times and aims to be in perfect balance at the earliest possiblity. 
 
 # Usage
 
@@ -346,7 +350,7 @@ Generates parent nodes up the tree until `anscestorNode` - including the `ancest
   
 Inserts this node (when detached) into its associated tree.
 
-Unsets this node's `isDeatched` flag.
+Unsets this node's `isDetached` flag.
 
 ## License
 

@@ -1,8 +1,30 @@
-import Tree from '.';
+import Tree, {
+	CriteriaOptions,
+	Criterion,
+	TraversalDirection,
+	TraversalOrder,
+	TreeNode,
+	TreeOptions
+} from '.';
+
+interface State<T = unknown> {
+	detached: boolean,
+	isInTree: boolean,
+	tree: Tree<T>
+};
+
+jest.useFakeTimers();
+const clearTimeoutSpy = jest.spyOn( global, 'clearTimeout' );
+const setTimeoutSpy = jest.spyOn( global, 'setTimeout' );
+afterAll(() => {
+	clearTimeoutSpy.mockRestore();
+	setTimeoutSpy.mockRestore()
+	jest.useRealTimers();
+});
 
 describe( 'Tree', () => {
 	describe( 'default tree', () => {
-		/** @type {Tree} */ let tree;
+		let tree : Tree;
 		beforeEach(() => { tree = new Tree() })
 		afterEach(() => { tree = null });
 		test( 'has zero values', () => {
@@ -14,8 +36,9 @@ describe( 'Tree', () => {
 	});
 	describe( 'default action options', () => {
 		test( 'uses default `isValueBefore` option', () => {
-			/** @type {Array<{a:number}>} */ let values = [{a: 2}, {a: 0}, {a: 3}];
-			/** @type {Tree<typeof values>} */ let tree = new Tree( values );
+			type Value = {a:number};
+			let values : Array<Value> = [{a: 2}, {a: 0}, {a: 3}];
+			let tree = new Tree<Value>( values );
 			expect( tree.values ).toStrictEqual( values );
 			const nextValue = {a: -3};
 			tree.insert( nextValue );
@@ -27,27 +50,28 @@ describe( 'Tree', () => {
 			tree = values = null;
 		});
 		test( 'uses default `isSameValue` option', () => {
-			/** @type {{a:number}} */ const testValue = {a: 2};
-			/** @type {Array<{a:number}>} */ let values = [ {a:0}, testValue, {a:3} ];
-			/** @type {Tree<typeof values>} */ let tree = new Tree( values, {
+			type Value = {a:number};
+			const testValue : Value = {a: 2};
+			let values : Array<Value> = [ {a:0}, testValue, {a:3} ];
+			let tree = new Tree<Value>( values, {
 				isValueBefore: ({ a }, { value: { a: nav } }) => a < nav
 			} );
 			// default isSameValue simply uses Object.is to reject duplicate entries
 			const propertyPredicate = v => v.a === 2;
-			expect( tree.values.filter( propertyPredicate ) ).toHaveLength( 1 );
+			expect([ ...tree.values ].filter( propertyPredicate ) ).toHaveLength( 1 );
 			tree.insert( testValue );
-			expect( tree.values.filter( propertyPredicate ) ).toHaveLength( 1 );
+			expect([ ...tree.values ].filter( propertyPredicate ) ).toHaveLength( 1 );
 			tree.insert({ ...testValue });
-			expect( tree.values.filter( propertyPredicate) ).toHaveLength( 2 );
+			expect([ ...tree.values ].filter( propertyPredicate) ).toHaveLength( 2 );
 			// change isSameValue to check equality by property equality
 			tree.isSameValue = ({ a }, { value: { a: nav }}) => a === nav;
-			expect( tree.values.filter( propertyPredicate ) ).toHaveLength( 1 );
+			expect([ ...tree.values ].filter( propertyPredicate ) ).toHaveLength( 1 );
 			tree = values = null;
 		});
 	});
 	describe( 'auto balances when', () => {
 		test( 'criteris setter property initiates a change', () => {
-			/** @type {Tree<number>} */ let tree = new Tree([ 3, 0.33, 1, 5, 0, 6, 3.76, 2, 5.33, 4 ]);
+			let tree = new Tree<number>([ 3, 0.33, 1, 5, 0, 6, 3.76, 2, 5.33, 4 ]);
 			// numbers are sorted asc by default
 			expect( tree.values ).toStrictEqual([ 0, 0.33, 1, 2, 3, 3.76, 4, 5, 5.33, 6 ]);
 			tree.criteria = {
@@ -58,7 +82,7 @@ describe( 'Tree', () => {
 			tree = null;
 		});
 		test( 'isValueBefore property changes', () => {
-			/** @type {Tree<number>} */ let tree = new Tree([ 3, 1, 5, 0, 6, 2, 4 ]);
+			let tree = new Tree<number>([ 3, 1, 5, 0, 6, 2, 4 ]);
 			// numbers are sorted asc by default
 			expect( tree.values ).toStrictEqual([ 0, 1, 2, 3, 4, 5, 6 ]);
 			tree.isValueBefore = ( v, node ) => v > node.value;
@@ -66,7 +90,7 @@ describe( 'Tree', () => {
 			tree = null;
 		});
 		test( 'isSameValue property changes', () => {
-			/** @type {Tree<number>} */ let tree = new Tree([
+			let tree = new Tree<number>([
 				0, 1, 2, 3, 0, 4, 2, 5, 1, 6
 			]);
 			// numbers are sorted asc by default
@@ -76,7 +100,7 @@ describe( 'Tree', () => {
 			tree = null;
 		});
 		describe( 'values property changes', () => {
-			/** @type {Tree<number>} */ let tree;
+			let tree : Tree<number>;
 			beforeEach(() => { tree = new Tree([ 0, 1, 2, 3, 0, 4, 2, 5, 1, 6 ] )});
 			afterEach(() => { tree = null })
 			test( 'at initialization are automatically sorted and deduped', () => {
@@ -88,7 +112,7 @@ describe( 'Tree', () => {
 			});
 			test( 'disassociate all previous undetached nodes', () => {
 				const detachedNode = tree.getNodeAt( -1 ).detach();
-				const oldNodes = tree.traverse();
+				const oldNodes = [ ...tree.traverse() as Array<TreeNode<number>> ];
 				expect( detachedNode.isFree ).toBe( false );
 				expect( oldNodes.every( n => !n.isFree ) ).toBe( true );
 				tree.values = [ 30, 10, 50, 0, 60, 20, 40 ];
@@ -101,7 +125,7 @@ describe( 'Tree', () => {
 		describe( 'ordered value inserts', () => {
 			const testData = [ 0, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 ];
 			test( 'into an empty tree', () => {
-				/** @type {Tree<number>} */ let tree = new Tree();
+				let tree = new Tree<number>();
 				tree.insert( 30 );
 				expect( tree.values ).toStrictEqual([ 30 ]);
 				tree = null;
@@ -110,7 +134,7 @@ describe( 'Tree', () => {
 				test.concurrent.each( testData.map( d => [ d ] ) ) (
 					'produces no effect. Inserting %d',
 					async incomingValue => {
-						/** @type {Tree<number>} */ let tree = new Tree( testData );
+						let tree = new Tree<number>( testData );
 						tree.insert( incomingValue );
 						expect( tree.values ).toStrictEqual( testData );
 						tree = null;
@@ -119,16 +143,14 @@ describe( 'Tree', () => {
 			});
 			describe( 'with values exceeding data boundaries', () => {
 				test( 'prepends new minimum to the data set.', () => {
-					/** @type {Tree<number>} */
-					let tree = new Tree( testData );
+					let tree = new Tree<number>( testData );
 					const treeValues = tree.values;
 					tree.insert( -5 );
 					expect( tree.values ).toStrictEqual([ -5, ...treeValues ]);
 					tree = null;
 				});
 				test( 'appends new maximum to the data set.', () => {
-					/** @type {Tree<number>} */
-					let tree = new Tree( testData );
+					let tree = new Tree<number>( testData );
 					const treeValues = tree.values;
 					tree.insert( 1e6 );
 					expect( tree.values ).toStrictEqual([ ...treeValues, 1e6 ]);
@@ -166,7 +188,7 @@ describe( 'Tree', () => {
 					[ 8191, [ 0, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8191, 8192 ] ],
 				])( 'placed between closest consescutive values. Inserting: %d',
 					async ( incomingValue, expectedData ) => {
-						/** @type {Tree<number>} */ let tree = new Tree( testData );
+						let tree = new Tree<number>( testData );
 						tree.insert( incomingValue );
 						expect( tree.values ).toStrictEqual( expectedData );
 						tree = null;
@@ -180,19 +202,20 @@ describe( 'Tree', () => {
 			test( 'acknowledges a valid tree instance', () => {
 				expect( Tree.isValid( new Tree() ) ).toBe( true );
 			} );
-			test( 'involidate invalid tree tyype', () => {
+			test( 'invalidate invalid tree tyype', () => {
+				// @ts-ignore
 				expect( Tree.isValid( new Object() ) ).toBe( false );
 			} );
 		} );
 	} );
 	describe( 'properties', () => {
-		/** @type {Function} */ let isSameValue;
-		/** @type {Function} */ let isValueBefore;
-		/** @type {Array<number>} */ let testValues = [ 1, 2, 3, 4, 5, 6, 7, 8 ];
-		/** @type {Tree<number>} */ let tree;
+		let isSameValue : Criterion<number>;
+		let isValueBefore : Criterion<number>;
+		let testValues : Array<number> = [ 1, 2, 3, 4, 5, 6, 7, 8 ];
+		let tree : Tree<number>;
 		beforeAll(() => {
-			isSameValue = ()=>{};
-			isValueBefore = ()=>{};
+			isSameValue = () => false;
+			isValueBefore = () => false;
 			tree = new Tree( testValues, { isSameValue, isValueBefore } );
 		});
 		afterAll(() => { tree = null });
@@ -212,16 +235,16 @@ describe( 'Tree', () => {
 		} );
 		describe( 'setters', () => {
 			describe( 'criteria', () => {
-				/** @type {Array<number>} */ let testValues;
-				/** @type {Tree<number>} */ let tree;
+				let testValues : Array<number>;
+				let tree : Tree<number>;
 				beforeAll(() => {
 					testValues = [ -24, -18, -12, -6, 0, 12, 46, 78, 94, 100 ];
 					tree = new Tree( testValues );
 				});
 				afterAll(() => { testValues = tree = null });
 				describe( '***', () => {
-					/** @type {Tree<numbers> */ let tree;
-					let cOpts;
+					let tree : Tree<number>;
+					let cOpts : TreeOptions<number>;
 					beforeAll(() => {
 						tree = new Tree( testValues );
 						cOpts = {
@@ -239,14 +262,13 @@ describe( 'Tree', () => {
 					} );
 				} );
 				describe( 'when set to undefined', () => {
-					let changedInitCriteriaToDefaults;
+					let changedInitCriteriaToDefaults : boolean;
 					beforeAll(() => {
-						let initialOpts = {
+						let initialOpts : TreeOptions<number> = {
 							isSameValue: ( v, n ) => v === n.value,
 							isValueBefore: ( v, n ) => v < n.value
 						};
-						/** @type {Tree<numbers> */
-						let tree = new Tree( testValues, initialOpts );
+						let tree = new Tree<number>( testValues, initialOpts );
 						changedInitCriteriaToDefaults = (
 							tree.isSameValue === initialOpts.isSameValue &&
 							tree.isValueBefore === initialOpts.isValueBefore
@@ -258,9 +280,9 @@ describe( 'Tree', () => {
 						tree.criteria = undefined;
 						changedInitCriteriaToDefaults = (
 							tree.isSameValue !== initialOpts.isSameValue &&
-							typeof( tree.isSameValue ) === 'function' &&
+							tree.isSameValue === Tree.DEFAULT &&
 							tree.isValueBefore !== initialOpts.isValueBefore &&
-							typeof( tree.isValueBefore ) === 'function'
+							tree.isValueBefore === Tree.DEFAULT
 						);
 						initialOpts = tree = null;
 					} );
@@ -273,7 +295,7 @@ describe( 'Tree', () => {
 				} );
 				describe( 'automatically rebalances the tree', () => {
 					test( 'to match the new criteria', () => {
-						/** @type {Tree<number>} */ let tree = new Tree( testValues );
+						let tree = new Tree<number>( testValues );
 						expect( tree.values ).toStrictEqual( testValues );
 						// use the reversed `isValueBefore` comparer
 						// in to reverse the tree values ordering
@@ -282,31 +304,31 @@ describe( 'Tree', () => {
 					} );
 				} );
 				describe( 'when set with any non-function criteria member', () => {
-					/** @type {Tree<number>} */ let tree;
-					beforeAll(() => { tree = new Tree() });
+					let tree : Tree<number>;
+					beforeAll(() => { tree = new Tree<number>() });
 					afterAll(() => { tree = null });
 					test( 'throws on invalid `isSameValue` param property', () => {
-						const opts = { isSameValue: null };
+						const opts : TreeOptions<number> = { isSameValue: null };
 						expect(() => { tree.criteria = opts }).toThrow( TypeError );
 						expect(() => { tree.criteria = opts }).toThrow(
 							'Invalid attempt to set tree\'s "isSameValue" property. Either unset it or set to either a function or Tree.DEFAULT.'
 						);
 					} );
 					test( 'throws on invalid `isValueBefore` param property', () => {
-						const opts = { isValueBefore: null };
+						const opts : TreeOptions<number> = { isValueBefore: null };
 						expect(() => { tree.criteria = opts }).toThrow( TypeError );
 						expect(() => { tree.criteria = opts }).toThrow(
 							'Invalid attempt to set tree\'s "isValueBefore" property. Either unset it or set to either a function or Tree.DEFAULT.'
 						);
 					} );
-					test( 'attempt to set a criteria member to undefined resets the member to its default value', () => {
-						const isSameValue = () => false;
+					test( 'attempt to set a criteria member to undefined resets the member to its default tag', () => {
+						const isSameValue : Criterion<number> = () => false;
 						const tree = new Tree([ 1, 2, 3 ], { isSameValue });
 						expect( tree.isSameValue ).toBe( isSameValue );
 						tree.criteria = { isSameValue: undefined };
 						expect( tree.isSameValue ).not.toBeUndefined();
 						expect( tree.isSameValue ).not.toBe( isSameValue );
-						expect( tree.isSameValue ).toEqual( expect.any( Function ) );
+						expect( tree.isSameValue ).toEqual( Tree.DEFAULT );
 					} );
 					test( 'coverage test: attempt to set a criteria member to itself remains unchanged', () => {
 						const isSameValue = () => false;
@@ -316,17 +338,10 @@ describe( 'Tree', () => {
 						expect( tree.isSameValue ).toBe( isSameValue );
 					} );
 				} );
-				test( 'throws on attempt to set non-criteria member', () => {
-					/** @type {Tree<number>} */ let tree = new Tree();
-					const opts = { testing: undefined };
-					expect(() => { tree.criteria = opts }).toThrow( TypeError );
-					expect(() => { tree.criteria = opts })
-						.toThrow( 'Unrecognized criteria key "testing".' );
-					tree = null;
-				} );
 			} );
 			describe( 'criteria members', () => {
-				let criteriaSetterSpy, testFn;
+				let criteriaSetterSpy : jest.SpyInstance<void, [ CriteriaOptions<number> ]>;
+				let testFn : Criterion<number>;
 				beforeAll(() => {
 					criteriaSetterSpy = jest.spyOn( tree, 'criteria', 'set' );
 					testFn = () => true;
@@ -364,6 +379,7 @@ describe( 'Tree', () => {
 					} );
 					describe( 'on receiving `undefined` input', () => {
 						test( 'sends the default text to the criteria setter property', () => {
+							criteriaSetterSpy.mockClear();
 							tree.isValueBefore = undefined;
 							expect( criteriaSetterSpy ).toHaveBeenCalledWith(
 								expect.objectContaining({ isValueBefore: Tree.DEFAULT })
@@ -375,13 +391,13 @@ describe( 'Tree', () => {
 			describe( 'values', () => {
 				describe( 'accept any iterable type', () => {
 					class TestIterable {
-						#data = [];
-						constructor( ...data ) { this.#data = data }
-						[ Symbol.iterator]() {
+						private _data = [];
+						constructor( ...data ) { this._data = data }
+						[ Symbol.iterator ]() {
 							let index = 0;
 							return {
-								next: () => index < this.#data.length
-									? { value: this.#data[ index++ ], done: false }
+								next: () => index < this._data.length
+									? { value: this._data[ index++ ], done: false }
 									: { done: true }
 							};
 						}
@@ -408,37 +424,39 @@ describe( 'Tree', () => {
 					let managed = false;
 					beforeAll(() => {
 						tree = new Tree();
-						if( !!tree.values.length ) {
+						if( !![ ...tree.values ].length ) {
 							tree = null;
 							return;
 						}
 						tree.values = [ 0, 11, 0, 77, 11, 33, 0, 99, 55 ];
 						const expecteds = [ 0, 11, 33, 55, 77, 99 ]
-						managed = tree.values.every(( v, i ) => v === expecteds[ i ]);
+						managed = [ ...tree.values ].every(( v, i ) => v === expecteds[ i ]);
 					});
 					test( 'sorts values ', () => { expect( managed ).toBe( true ) } );
 					test( 'dedupes values ', () => { expect( managed ).toBe( true ) } );
 				} );
 				test( 'throws on non-iterable input', () => {
+					// @ts-ignore
 					expect(() => { tree.values = 99 }).toThrow( TypeError );
+					// @ts-ignore
 					expect(() => { tree.values = 99 }).toThrow(
-						'Can only set values property to either an array or undefined.'
+						'Can only set values property using an iterable or (falsy values for an empty tree).'
 					);
 				} );
 				test( 'clears the tree on empty iterable input', () => {
-					/** @type {Tree<number>} */ let tree = new Tree( testValues );
+					let tree = new Tree( testValues );
 					expect( tree.values ).toStrictEqual( testValues );
 					tree.values = [];
 					expect( tree.values ).toHaveLength( 0 );
 				} );
 				test( 'clears the tree with the undefined input', () => {
-					/** @type {Tree<number>} */ let tree = new Tree( testValues );
+					let tree = new Tree( testValues );
 					expect( tree.values ).toStrictEqual( testValues );
 					tree.values = undefined;
 					expect( tree.values ).toHaveLength( 0 );
 				} );
 				test( 'changes tree values', () => {
-					/** @type {Tree<number>} */ let tree = new Tree( testValues );
+					let tree = new Tree( testValues );
 					expect( tree.values ).toStrictEqual( testValues );
 					const newValues = [ 1, 3, 6, 9 ];
 					tree.values = newValues;
@@ -453,9 +471,10 @@ describe( 'Tree', () => {
 	} );
 	describe( 'instance methods', () => {
 		describe( 'cleanup(...)', () => {
-			let nodesNotFreedBeforeDetachment, nodesFreedAfterDetachment;
+			let nodesNotFreedBeforeDetachment : boolean;
+			let nodesFreedAfterDetachment : boolean;
 			beforeAll(() => {
-				/** @type {Tree<number>} */ let tree = new Tree([ 1, 2, 3, 4 ]);
+				let tree = new Tree([ 1, 2, 3, 4 ]);
 				const detachedNodes = [ 0, 2, 3 ].map( index => tree.getNodeAt( index ) );
 				// running cleanup on a tree with no detached nodes has no effect
 				tree.cleanup();
@@ -478,7 +497,7 @@ describe( 'Tree', () => {
 			} );
 		} );
 		describe( 'clear(...)', () => {
-			/** @type {Tree<number>} */ let tree;
+			let tree : Tree<number>;
 			const values = [ 1, 2, 3, 4 ];
 			beforeEach(() => { tree = new Tree( values ) });
 			afterEach(() => { tree = null });
@@ -492,16 +511,16 @@ describe( 'Tree', () => {
 			} );
 		} );
 		describe( 'compare(...)', () => {
-			/** @type {TreeNode<number>} */ let node;
-			/** @type {number} */ let testValue;
-			/** @type {Tree<number>} */ let tree;
+			let node : TreeNode<number>;
+			let testValue : number;
+			let tree : Tree<number>;
 			beforeAll(() => {
 				testValue = 3;
 				tree = new Tree([ testValue ]);
-				node = tree.traverse().pop();
+				node = ( tree.traverse() as Array<TreeNode<number>> ).pop();
 
 			})
-			afterAll(() => { treeValue = tree = node = null });
+			afterAll(() => { testValue = tree = node = null });
 			test( 'returns -1 when value is less than node.value', () => {
 				expect( tree.compare( 0, node ) ).toBe( -1 );
 			} );
@@ -516,7 +535,7 @@ describe( 'Tree', () => {
 					.fn()
 					.mockImplementation( ( v, n ) => v === n?.value );
 				const isValueBefore = jest.fn().mockReturnValue( true );
-				/** @type {Tree<number>} */ let tree = new Tree(
+				let tree = new Tree<number>(
 					[ testValue ], { isSameValue, isValueBefore }
 				);
 				isSameValue.mockClear();
@@ -527,18 +546,19 @@ describe( 'Tree', () => {
 				tree = null;
 			} );
 			test( 'throws on receiving invalid node', () => {
-				/** @type {Tree<number>} */ let tree = new Tree();
+				let tree = new Tree<number>();
+				// @ts-ignore
 				expect(() => { tree.compare( 5, { value: 2 } ) }).toThrow( TypeError );
 				tree = null;
 			} );
 		} );
 		describe( '*genTraversal(...)', () => {
-			/** @type {Array<number>} */ const testValues = [ 1, 2, 3, 4, 5, 6, 7 ];
-			/** @type {Array<number>} */ const expectedLtrPostOrderResult = [ 1, 3, 2, 5, 7, 6, 4 ];
-			/** @type {Array<number>} */ const expectedLtrPreOrderResult = [ 4, 2, 1, 3, 6, 5, 7 ];
-			/** @type {Array<number>} */ const expectedRtlPostOrderResult = [ 7, 5, 6, 3, 1, 2, 4 ];
-			/** @type {Array<number>} */ const expectedRtlPreOrderResult = [ 4, 6, 7, 5, 2, 3, 1 ];
-			/** @type {Tree<number>} */ let tree = new Tree( testValues );
+			const testValues = [ 1, 2, 3, 4, 5, 6, 7 ];
+			const expectedLtrPostOrderResult = [ 1, 3, 2, 5, 7, 6, 4 ];
+			const expectedLtrPreOrderResult = [ 4, 2, 1, 3, 6, 5, 7 ];
+			const expectedRtlPostOrderResult = [ 7, 5, 6, 3, 1, 2, 4 ];
+			const expectedRtlPreOrderResult = [ 4, 6, 7, 5, 2, 3, 1 ];
+			let tree = new Tree( testValues );
 			describe( 'default behavior', () => {
 				let isInOrder = true;
 				beforeAll(() => {
@@ -555,8 +575,7 @@ describe( 'Tree', () => {
 				test( 'traverses from letf to right', () => { expect( isInOrder ).toBe( true ) } );
 				test( 'accesses all nodes', () => { expect( isInOrder ).toBe( true ) } );
 				test( 'terminates immediately on tree with null root', () => {
-					/** @type {Tree<number>} */
-					const tree = new Tree();
+					const tree = new Tree<number>();
 					const generator = tree.genTraversal();
 					expect( generator.next() ).toStrictEqual({
 						done: true,
@@ -566,9 +585,9 @@ describe( 'Tree', () => {
 			} );
 			describe( 'acceptable traversal order', () => {
 				test.each([
-					[ Tree.Order.IN, testValues ],
-					[ Tree.Order.POST, expectedLtrPostOrderResult ],
-					[ Tree.Order.PRE, expectedLtrPreOrderResult ]
+					[ TraversalOrder.IN, testValues ],
+					[ TraversalOrder.POST, expectedLtrPostOrderResult ],
+					[ TraversalOrder.PRE, expectedLtrPreOrderResult ]
 				])(
 					'retrieves values accordingly. Traversing in %s order',
 					( order, expectedData ) => {
@@ -583,12 +602,12 @@ describe( 'Tree', () => {
 			} );
 			describe( 'acceptable traversal direction', () => {
 				test.each([
-					[ Tree.Order.IN, Tree.Direction.RIGHT, testValues ],
-					[ Tree.Order.IN, Tree.Direction.LEFT, [ ...testValues ].reverse() ],
-					[ Tree.Order.POST, Tree.Direction.RIGHT, expectedLtrPostOrderResult ],
-					[ Tree.Order.POST, Tree.Direction.LEFT, expectedRtlPostOrderResult ],
-					[ Tree.Order.PRE, Tree.Direction.RIGHT, expectedLtrPreOrderResult ],
-					[ Tree.Order.PRE, Tree.Direction.LEFT, expectedRtlPreOrderResult ]
+					[ TraversalOrder.IN, TraversalDirection.RIGHT, testValues ],
+					[ TraversalOrder.IN, TraversalDirection.LEFT, [ ...testValues ].reverse() ],
+					[ TraversalOrder.POST, TraversalDirection.RIGHT, expectedLtrPostOrderResult ],
+					[ TraversalOrder.POST, TraversalDirection.LEFT, expectedRtlPostOrderResult ],
+					[ TraversalOrder.PRE, TraversalDirection.RIGHT, expectedLtrPreOrderResult ],
+					[ TraversalOrder.PRE, TraversalDirection.LEFT, expectedRtlPreOrderResult ]
 				])(
 					'retrieves values accordingly. Traversing in %s order to the $s direction',
 					( order, direction, expectedData ) => {
@@ -603,19 +622,26 @@ describe( 'Tree', () => {
 			} );
 			describe( 'range based traversal', () => {
 				const testArtifacts = [
-					[ Tree.Order.IN, Tree.Direction.RIGHT, [ 3, 4, 5 ] ],
-					[ Tree.Order.IN, Tree.Direction.LEFT, [ 3, 2, 1 ] ],
-					[ Tree.Order.POST, Tree.Direction.RIGHT, [ 3, 2, 5 ] ],
-					[ Tree.Order.POST, Tree.Direction.LEFT, [ 3, 1, 2 ] ],
-					[ Tree.Order.PRE, Tree.Direction.RIGHT, [ 3, 6, 5] ],
-					[ Tree.Order.PRE, Tree.Direction.LEFT, [ 3, 1 ] ]
+					[ TraversalOrder.IN, TraversalDirection.RIGHT, [ 3, 4, 5 ] ],
+					[ TraversalOrder.IN, TraversalDirection.LEFT, [ 3, 2, 1 ] ],
+					[ TraversalOrder.POST, TraversalDirection.RIGHT, [ 3, 2, 5 ] ],
+					[ TraversalOrder.POST, TraversalDirection.LEFT, [ 3, 1, 2 ] ],
+					[ TraversalOrder.PRE, TraversalDirection.RIGHT, [ 3, 6, 5] ],
+					[ TraversalOrder.PRE, TraversalDirection.LEFT, [ 3, 1 ] ]
 				];
-				const runTest = range => {
+				const runTest = ( range : {
+					maxLength: number;
+					start: number
+				} ) => {
 					test.each( testArtifacts )(
 						'retrieves values accordingly. Traversing in %s order to the %s direction',
-						( order, direction, expectedData ) => {
+						( 
+							order : TraversalOrder,
+							direction : TraversalDirection,
+							expectedData : Array<number>
+						) => {
 							let i = 0;
-							for( const { value } of tree.genTraversal({ direction, order, ...range }) ) {
+							for( const { value } of tree.genTraversal({ direction, order, ...range } ) ) {
 								if( value !== expectedData[ i ] ) { break }
 								i++;
 							}
@@ -634,12 +660,12 @@ describe( 'Tree', () => {
 			} );
 			describe( 'out of bound range traversal scenario', () => {
 				const testArtifacts = [
-					[ Tree.Order.IN, Tree.Direction.RIGHT, testValues ],
-					[ Tree.Order.IN, Tree.Direction.LEFT, [ ...testValues ].reverse() ],
-					[ Tree.Order.POST, Tree.Direction.RIGHT, expectedLtrPostOrderResult ],
-					[ Tree.Order.POST, Tree.Direction.LEFT, expectedRtlPostOrderResult ],
-					[ Tree.Order.PRE, Tree.Direction.RIGHT, expectedLtrPreOrderResult ],
-					[ Tree.Order.PRE, Tree.Direction.LEFT, expectedRtlPreOrderResult ]
+					[ TraversalOrder.IN, TraversalDirection.RIGHT, testValues ],
+					[ TraversalOrder.IN, TraversalDirection.LEFT, [ ...testValues ].reverse() ],
+					[ TraversalOrder.POST, TraversalDirection.RIGHT, expectedLtrPostOrderResult ],
+					[ TraversalOrder.POST, TraversalDirection.LEFT, expectedRtlPostOrderResult ],
+					[ TraversalOrder.PRE, TraversalDirection.RIGHT, expectedLtrPreOrderResult ],
+					[ TraversalOrder.PRE, TraversalDirection.LEFT, expectedRtlPreOrderResult ]
 				];
 				const getSingleTest = range => ( order, direction, expectedData ) => {
 					let i = 0;
@@ -668,6 +694,7 @@ describe( 'Tree', () => {
 					() => {
 						test( 'backwardly retrieves all matching nodes from start to index at maxLength', () => {
 							getSingleTest({ maxLength: 5, start: 6 })(
+								// @ts-ignore
 								...testArtifacts[ 1 ].slice( 0, -1 ),
 								testArtifacts[ 1 ][ 2 ].slice( 0, -1 )
 							);
@@ -676,8 +703,10 @@ describe( 'Tree', () => {
 				);
 				describe( 'maxLength = 0', () => {
 					test.each( testArtifacts )(
-						`retrieves 0 nodes with %s in the %s direction`,
-						( order, direction ) => {
+						`retrieves 0 nodes with %s in the %s direction`, (
+							order : TraversalOrder,
+							direction : TraversalDirection
+						) => {
 							const nodes = [];
 							for( const node of tree.genTraversal({
 								direction, order, maxLength: 0
@@ -688,14 +717,16 @@ describe( 'Tree', () => {
 				} );
 			} );
 			test( 'throws Error on invalid traversal order', () => {
+				// @ts-ignore
 				const t = () => { tree.genTraversal({ order: 'testing' }).next() };
 				expect( t ).toThrow( Error );
-				expect( t ).toThrow( 'Unknown order detected. Member of the `Tree.Order` expected or leave it unset.' );
+				expect( t ).toThrow( 'Unknown order detected. Member of the `TraversalOrder` expected or leave it unset.' );
 			} );
 			test( 'throws Error on invalid traversal direction', () => {
+				// @ts-ignore
 				const t = () => { tree.genTraversal({ direction: 'testing' }).next() };
 				expect( t ).toThrow( Error );
-				expect( t ).toThrow( 'Invalid `direction` option supplied to `traverse` method. A member of Tree.Direction expected or leave it unset.' );
+				expect( t ).toThrow( 'Invalid `direction` option supplied to `traverse` method. A member of `TraversalDirection` expected or leave it unset.' );
 			} );
 			test( 'throws TypeError on invalid traversal maxLength', () => {
 				const t = () => { tree.genTraversal({ maxLength: null }).next() };
@@ -712,7 +743,7 @@ describe( 'Tree', () => {
 				const tree = new Tree( testValues );
 				const runTestFor = baseOpts => {
 					describe( 'ltr', () => {
-						const opts = { ...baseOpts, direction: Tree.Direction.RIGHT };
+						const opts = { ...baseOpts, direction: TraversalDirection.RIGHT };
 						test.each( testValues.map(( v, i ) => [ i, v ]) )(
 							`starting from index %i = %i`,
 							( start, sValue ) => {
@@ -722,7 +753,7 @@ describe( 'Tree', () => {
 						);
 					} );
 					describe( 'rtl', () => {
-						const opts = { ...baseOpts, direction: Tree.Direction.LEFT };
+						const opts = { ...baseOpts, direction: TraversalDirection.LEFT };
 						test.each( testValues.map(( v, i ) => [ i, v ]) )(
 							`starting from index %i = %i`,
 							( start, sValue ) => {
@@ -732,15 +763,15 @@ describe( 'Tree', () => {
 						);
 					} );
 				};
-				describe( 'in-order', () => { runTestFor({ order: Tree.Order.IN }) } );
-				describe( 'post-order', () => { runTestFor({ order: Tree.Order.POST }) } );
-				describe( 'pre-order', () => { runTestFor({ order: Tree.Order.PRE }) } );
+				describe( 'in-order', () => { runTestFor({ order: TraversalOrder.IN }) } );
+				describe( 'post-order', () => { runTestFor({ order: TraversalOrder.POST }) } );
+				describe( 'pre-order', () => { runTestFor({ order: TraversalOrder.PRE }) } );
 			} );
 		} );
 		describe( 'getNodeAt(...)', () => {
-			/** @type {number} */ let testValues = [ 1, 2, 3, 4, 5, 6, 7 ];
-			/** @type {Tree<number>} */ let tree = new Tree( testValues );
-			test.each([ testValues.map(( v, i ) => [ i ] ) ])(
+			let testValues = [ 1, 2, 3, 4, 5, 6, 7 ];
+			let tree = new Tree( testValues );
+			test.each( testValues.map(( v, i ) => [ i ]) )(
 				'returns node at index %i', index => {
 				expect( tree.getNodeAt( index ).value ).toBe( testValues[ index ] );
 			} );
@@ -752,12 +783,12 @@ describe( 'Tree', () => {
 			} );
 		} );
 		describe( 'indexOf(...)', () => {
-			/** @type {number} */ let testValues = [ 1, 2, 3, 4, 5, 6, 7 ];
-			/** @type {Tree<number>} */ let tree = new Tree( testValues );
+			let testValues = [ 1, 2, 3, 4, 5, 6, 7 ];
+			let tree = new Tree( testValues );
 			test( 'returns -1 when used on an empty tree', () => {
 				expect(( new Tree() ).indexOf( 2 )).toBe( -1 );
 			} );
-			test.each([ testValues.map( v => [ v ] ) ])(
+			test.each( testValues.map( v => [ v ] ) )(
 				'returns index location of the node holding the value %i', value => {
 				expect( tree.indexOf( value ) ).toBe( testValues.indexOf( value ) );
 			} );
@@ -816,7 +847,7 @@ describe( 'Tree', () => {
 			} );
 		} );
 		describe( 'insert(...)', () => {
-			/** @type {Tree<number>} */ let tree;
+			let tree : Tree<number>;
 			beforeEach(() => { tree = new Tree([ 1, 6, 10 ]) });
 			afterEach(() => { tree = null });
 			test( 'returns the tree', () => { expect( tree.insert( 4 ) ).toBe( tree ) } );
@@ -826,8 +857,8 @@ describe( 'Tree', () => {
 			} );
 		} );
 		describe( 'insertNode(...)', () => {
-			/** @type {Array<number>} */ let testValues;
-			/** @type {Tree<number>} */ let tree;
+			let testValues : Array<number>;
+			let tree : Tree<number>;
 			beforeEach(() => { 
 				testValues = [ 1, 6, 10 ];
 				tree = new Tree( testValues );
@@ -902,26 +933,28 @@ describe( 'Tree', () => {
 			test( 'accepts unassoicated node', () => {
 				let tree = new Tree(  testValues );
 				const freeNode = tree.getNodeAt( 1 ).free();
-				expect( tree.values.indexOf( freeNode.value ) ).toBe( -1 );
+				expect([ ...tree.values ].indexOf( freeNode.value )).toBe( -1 );
 				expect( freeNode.isDetached ).toBe( true );
 				expect( freeNode.isFree ).toBe( true );
 				try { freeNode.join() } catch( e ) {
-					expect( tree.values.indexOf( freeNode.value ) ).toBe( -1 );
+					expect([ ...tree.values ].indexOf( freeNode.value )).toBe( -1 );
 					expect( e ).toBeInstanceOf( ReferenceError );
 					expect( e.message ).toBe( 'Cannot join node. Referenced tree does not exist.' );
 				}
 				expect(() => tree.insertNode( freeNode )).not.toThrow();
-				expect( tree.values.indexOf( freeNode.value ) ).not.toBe( -1 );
+				expect([ ...tree.values ].indexOf( freeNode.value )).not.toBe( -1 );
 				tree = null;
 			} );
 			describe( 'Argument validation', () => {
 				test( 'throws TypeError on attempt to insert invalid node', () => {
 					const node = { value: expect.any( Number ), left: null, right: null }
+					// @ts-ignore
 					expect(() => { tree.insertNode( node ) }).toThrow( TypeError );
+					// @ts-ignore
 					expect(() => { tree.insertNode( node ) }).toThrow( Tree.INVALID_NODE_MESSAGE );
 				} );
 				test( 'throws ReferenceError on attempt to insert foreign node instances', () => {
-					/** @type {Tree<number>} */ let testTree = new Tree([ 90 ]);
+					let testTree = new Tree([ 90 ]);
 					const node = testTree.getNodeAt( 0 );
 					expect(() => { tree.insertNode( node ) }).toThrow( ReferenceError );
 					expect(() => { tree.insertNode( node ) }).toThrow( Tree.TREE_MISMATCH_MESSAGE );
@@ -930,8 +963,8 @@ describe( 'Tree', () => {
 			} );
 		} );
 		describe( 'remove(...)', () => {
-			/** @type {Array<number>} */ let testValues = [ 0, 3, 6, 9 ];
-			/** @type {Tree<number>} */ let tree = new Tree( testValues );
+			let testValues = [ 0, 3, 6, 9 ];
+			let tree = new Tree( testValues );
 			describe( '***', () => {
 				const t = tree.remove( 2 );
 				test( 'returns self', () => { expect( t ).toBe( tree ) } );
@@ -969,7 +1002,7 @@ describe( 'Tree', () => {
 		describe( 'removeNode(...)', () => {
 			describe( '***', () => {
 				test( 'returns self', () => {
-					/** @type {Tree<number>} */ let tree = new Tree([ 72 ]);
+					let tree = new Tree([ 72 ]);
 					expect( tree.removeNode( tree.getNodeAt( 0 ) )  ).toBe( tree );
 				} );
 			} );
@@ -998,129 +1031,125 @@ describe( 'Tree', () => {
 		} );
 		describe( 'rotate(...)', () => {
 			test( 'is automatically scheduled on writes', () => {
-				jest.useFakeTimers();
+				setTimeoutSpy.mockClear();
 				let tree = new Tree([{ a: -4 }, { a: 6 }, { a: 0 }, { a: 9 }], {
 					isSameValue: ( v, n ) => v.a === n.value.a,
 					isValueBefore: ( v, n ) => v.a < n.value.a
 				} );
 				let treeRotateSpy = jest.spyOn( tree, 'rotate' );
 
-				expect( global.setTimeout ).toHaveBeenCalled();
+				expect( setTimeoutSpy ).toHaveBeenCalled();
 				expect( treeRotateSpy ).not.toHaveBeenCalled();
 				jest.runOnlyPendingTimers();
 				expect( treeRotateSpy ).toHaveBeenCalled();
-
-				global.setTimeout.mockClear();
+				setTimeoutSpy.mockClear();
 				treeRotateSpy.mockClear();
 				tree.values = [{ a: 5 }, { a: 32 }, { a: 66 }, { a: 1 }];
 				expect( treeRotateSpy ).not.toHaveBeenCalled();
-				expect( global.setTimeout ).toHaveBeenCalled();
+				expect( setTimeoutSpy ).toHaveBeenCalled();
 				jest.runOnlyPendingTimers();
 				expect( treeRotateSpy ).toHaveBeenCalled();
 				
 				const oldNode2 = tree.getNodeAt( 2 );
-				
-				global.setTimeout.mockClear();
+				// @ts-ignore
+				setTimeoutSpy.mockClear();
 				treeRotateSpy.mockClear();
 				oldNode2.value = { a: 72 };
 				expect( treeRotateSpy ).not.toHaveBeenCalled();
-				expect( global.setTimeout ).toHaveBeenCalled();
+				expect( setTimeoutSpy ).toHaveBeenCalled();
 				jest.runOnlyPendingTimers();
 				expect( treeRotateSpy ).toHaveBeenCalled();
-
-				global.setTimeout.mockClear();
+				// @ts-ignore
+				setTimeoutSpy.mockClear();
 				treeRotateSpy.mockClear();
 				tree.removeNode( oldNode2 );
 				expect( treeRotateSpy ).not.toHaveBeenCalled();
-				expect( global.setTimeout ).toHaveBeenCalled();
+				expect( setTimeoutSpy ).toHaveBeenCalled();
 				jest.runOnlyPendingTimers();
 				expect( treeRotateSpy ).toHaveBeenCalled();
-
-				global.setTimeout.mockClear();
+				// @ts-ignore
+				setTimeoutSpy.mockClear();
 				treeRotateSpy.mockClear();
 				tree.insertNode( oldNode2 );
 				expect( treeRotateSpy ).not.toHaveBeenCalled();
-				expect( global.setTimeout ).toHaveBeenCalled();
+				expect( setTimeoutSpy ).toHaveBeenCalled();
 				jest.runOnlyPendingTimers();
 				expect( treeRotateSpy ).toHaveBeenCalled();
 
-				global.setTimeout.mockClear();
+				// @ts-ignore
+				setTimeoutSpy.mockClear();
 				treeRotateSpy.mockClear();
 				oldNode2.value.a = 24;
 				tree.synchronize( oldNode2 );
 				expect( treeRotateSpy ).not.toHaveBeenCalled();
-				expect( global.setTimeout ).toHaveBeenCalled();
+				expect( setTimeoutSpy ).toHaveBeenCalled();
 				jest.runOnlyPendingTimers();
 				expect( treeRotateSpy ).toHaveBeenCalled();
 
-				jest.useRealTimers();
 				treeRotateSpy.mockRestore();
 				treeRotateSpy = tree = null;
 			} );
 			test( 'no automatic scheduling on writes attempts producing no new changes', () => {
 				let testValues = [{ a: -2 }, { a: 3 }, { a: 0 }, { a: 9 }];
-				jest.useFakeTimers();
 				let tree = new Tree( testValues, {
 					isSameValue: ( v, n ) => v.a === n.value.a,
 					isValueBefore: ( v, n ) => v.a < n.value.a
 				} );
 				let treeRotateSpy = jest.spyOn( tree, 'rotate' );
 				jest.runOnlyPendingTimers();
-				global.setTimeout.mockClear();
+				// @ts-ignore
+				setTimeoutSpy.mockClear();
 				treeRotateSpy.mockClear();
 				
 				tree.values = [ ...testValues ];
-				expect( global.setTimeout ).not.toHaveBeenCalled();
+				expect( setTimeoutSpy ).not.toHaveBeenCalled();
 				expect( treeRotateSpy ).not.toHaveBeenCalled();
 				
 				const oldNode2 = tree.getNodeAt( 2 );
 				
 				oldNode2.value = { ...oldNode2.value };
-				expect( global.setTimeout ).not.toHaveBeenCalled();
+				expect( setTimeoutSpy ).not.toHaveBeenCalled();
 				expect( treeRotateSpy ).not.toHaveBeenCalled();
 
 				tree.insertNode( oldNode2 );
-				expect( global.setTimeout ).not.toHaveBeenCalled();
+				expect( setTimeoutSpy ).not.toHaveBeenCalled();
 				expect( treeRotateSpy ).not.toHaveBeenCalled();
 
 				oldNode2.value.a = oldNode2.value.a;
 				tree.synchronize( oldNode2 );
-				expect( global.setTimeout ).not.toHaveBeenCalled();
+				expect( setTimeoutSpy ).not.toHaveBeenCalled();
 				expect( treeRotateSpy ).not.toHaveBeenCalled();
 
-				jest.useRealTimers();
 				treeRotateSpy.mockRestore();
 				treeRotateSpy = tree = null;
 			} );
 			test( 'attempt on an already balanced tree is a no op', () => {
-				jest.useFakeTimers();
 				let tree = new Tree([ -2, 3, 0, 9 ]);
 				jest.runOnlyPendingTimers();
-				global.clearTimeout.mockClear();
+				// @ts-ignore
+				clearTimeoutSpy.mockClear();
 				tree.rotate();
-				expect( global.clearTimeout ).not.toHaveBeenCalled();
-				jest.useRealTimers();
+				expect( clearTimeoutSpy ).not.toHaveBeenCalled();
 				tree = null;
 			} );
 			test( 'attempt on an already balanced tree is a no op', () => {
-				jest.useFakeTimers();
 				let tree = new Tree([ -2, 3, 0, 9 ]);
 				jest.runOnlyPendingTimers();
-				global.clearTimeout.mockClear();
+				// @ts-ignore
+				clearTimeoutSpy.mockClear();
 				tree.rotate();
-				expect( global.clearTimeout ).not.toHaveBeenCalled();
-				jest.useRealTimers();
+				expect( clearTimeoutSpy ).not.toHaveBeenCalled();
 				tree = null;
 			} );
 		} );
 		describe( 'synchronize(...)', () => {
-			/** @type {Array<number>} */ let testValues;
+			let testValues : Array<number>;
 			beforeAll(() => { testValues = [ 0, 3, 6, 9 ] });
-			afterAll(() => { testValues = tree = null });
+			afterAll(() => { testValues = null });
 			describe( '***', () => {
 				let returnedSelf, syncOccurred = false;
 				beforeAll(() => {
-					/** @type {Tree<number>} */ let tree = new Tree( testValues );
+					let tree = new Tree( testValues );
 					const node = tree.getNodeAt( 1 ).detach();
 					const arraySpliceSpy = jest.spyOn( Array.prototype, 'splice' );
 					returnedSelf = tree.synchronize( node ) === tree;
@@ -1135,7 +1164,7 @@ describe( 'Tree', () => {
 				} );
 			} );
 			test( 'rebalances tree when value of an undetached node changes', () => {
-				/** @type {Tree<number>} */ let tree = new Tree( testValues );
+				let tree = new Tree( testValues );
 				const node = tree.getNodeAt( 3 );
 				expect( tree.values ).toStrictEqual( testValues );
 				const synchronizeSpy = jest.spyOn( tree, 'synchronize' );
@@ -1146,7 +1175,7 @@ describe( 'Tree', () => {
 				tree = null;
 			} );
 			test( 'does not rebalance tree when value change of an undetached node is within index placement range', () => {
-				/** @type {Tree<number>} */ let tree = new Tree( testValues );
+				let tree = new Tree( testValues );
 				const OLD_INDEX = 2;
 				const node = tree.getNodeAt( OLD_INDEX );
 				expect( tree.values ).toStrictEqual( testValues );
@@ -1167,7 +1196,7 @@ describe( 'Tree', () => {
 				tree = null;
 			} );
 			test( 'suspends undetached node from tree if its value is changed to a value of another undetached node', () => {
-				/** @type {Tree<number>} */ let tree = new Tree( testValues );
+				let tree = new Tree( testValues );
 				const node = tree.getNodeAt( 3 );
 				expect( tree.values ).toStrictEqual( testValues );
 				const synchronizeSpy = jest.spyOn( tree, 'synchronize' );
@@ -1178,7 +1207,7 @@ describe( 'Tree', () => {
 				tree = null;
 			} );
 			test( 'change in value of a detached node has no effect', () => {
-				/** @type {Tree<number>} */ let tree = new Tree( testValues );
+				let tree = new Tree( testValues );
 				const detachedNode = tree.getNodeAt( 1 ).detach();
 				const _testValues = [ ...testValues ]
 				_testValues.splice( 1, 1 );
@@ -1192,8 +1221,8 @@ describe( 'Tree', () => {
 			} );
 		} );
 		describe( 'traverse(...)', () => {
-			/** @type {Array<number>} */ let testValues = [ 0, 3, 6, 9 ];
-			/** @type {Tree<number>} */ let tree = new Tree( testValues );
+			let testValues = [ 0, 3, 6, 9 ];
+			let tree = new Tree( testValues );
 			test( 'throws on invalid callback argument', () => {
 				expect(() => { tree.traverse( null ) }).toThrow( TypeError );
 				expect(() => { tree.traverse( null ) }).toThrow(
@@ -1228,17 +1257,17 @@ describe( 'Tree', () => {
 		} );
 	} );
 	describe( 'tree node', () => {
-		/** @type {Array<number>} */ let values;
-		/** @type {Tree<number>} */ let tree;
+		let values : Array<number>;
+		let tree : Tree<number>;
 		beforeAll(() => {
 			values = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 ];
 			tree = new Tree( values );
 		});
 		afterAll(() => { values = tree = null });
 		describe( 'properties', () => {
-			/** @type {Array<number>} */ let testValues;
-			/** @type {TreeNode<number>} */ let node;
-			/** @type {Tree<number>} */ let tree;
+			let testValues : Array<number>;
+			let node : TreeNode<number>;
+			let tree : Tree<number>;
 			beforeAll(() => {
 				testValues = [ 1, 3, 5, 7, 9 ];
 				tree =  new Tree( testValues );
@@ -1246,8 +1275,8 @@ describe( 'Tree', () => {
 			});
 			afterAll(() => { testValues = node = tree = null });
 			describe( 'getters', () => {
-				/** @type {TreeNode<number>} */ let node;
-				/** @type {Tree<number>} */ let tree;
+				let node : TreeNode<number>;
+				let tree : Tree<number>;
 				beforeAll(() => {
 					tree = new Tree( values );
 					node = tree.getNodeAt( 1 );
@@ -1297,7 +1326,7 @@ describe( 'Tree', () => {
 					} );
 				} );
 				describe( 'tree', () => {
-					test( 'returns node\'s associated tree', () => {
+					test( "returns node's associated tree", () => {
 						expect( node.tree ).toBe( tree );
 					} );
 				} );
@@ -1314,20 +1343,20 @@ describe( 'Tree', () => {
 						beforeAll(() => {
 							let _values = [ 60 ];
 							let origTree = new Tree( _values );
-							let altTree = new Tree();
-							let origTreeValues = origTree.values;
+							let altTree = new Tree<number>();
+							let origTreeValues = [ ...origTree.values ];
 							let node = origTree.getNodeAt( 0 );
 							if(
 								node.tree !== origTree ||
-								altTree.values.length !== 0 ||
+								[ ...altTree.values ].length !== 0 ||
 								origTreeValues.length !== _values.length ||
 								origTreeValues.some(( v, i ) => v !== _values[ i ])
 							){ return } 
 							node.tree = altTree;
-							let altTreeValues = altTree.values;
+							let altTreeValues = [ ...altTree.values ];
 							treeReassignmentCompleted = (
 								node.tree === altTree &&
-								origTree.values.length === 0 &&
+								[ ...origTree.values ].length === 0 &&
 								altTreeValues.length === 1 &&
 								altTreeValues[ 0 ] === _values[ 0 ] &&
 								altTree.getNodeAt( 0 ) === node
@@ -1355,7 +1384,9 @@ describe( 'Tree', () => {
 					} );
 					test( 'throws on invalid tree argument', () => {
 						const invalidTree = new Object();
+						// @ts-ignore
 						expect(() => { node.tree = invalidTree }).toThrow( TypeError );
+						// @ts-ignore
 						expect(() => { node.tree = invalidTree }).toThrow(
 							'Cannot attach a node to an invalid tree.'
 						);
@@ -1384,7 +1415,9 @@ describe( 'Tree', () => {
 							) {  return }
 							node0.value = 90;
 							updateComplete = (
+								// @ts-ignore					
 								( node1.index === 0 && node1.value === 76 ) &&
+								// @ts-ignore			
 								( node0.index === 1 && node0.value === 90 )
 							);
 						});
@@ -1411,22 +1444,24 @@ describe( 'Tree', () => {
 		} );
 		describe( 'instance methods', () => {
 			describe( 'detach(...)', () => {
-				let preExitState = {};
-				let postExitState = {};
-				let returnVal, node, tree;
+				let preExitState = {} as State<number>; 
+				let postExitState = {} as State<number>;
+				let node : TreeNode<number>;
+				let returnVal : TreeNode<number>;
+				let tree : Tree<number>;
 				beforeAll(() => {
 					const TEST_INDEX = 2;
 					tree = new Tree( values );
 					node = tree.getNodeAt( TEST_INDEX );
 					preExitState = {
 						detached: node.isDetached,
-						isInTree: tree.values.includes( values[ TEST_INDEX ]),
+						isInTree: [ ...tree.values ].includes( values[ TEST_INDEX ] ),
 						tree: node.tree
 					};
 					returnVal = node.detach();
 					postExitState = {
 						detached: node.isDetached,
-						isInTree: tree.values.includes( values[ TEST_INDEX ]),
+						isInTree: [ ...tree.values ].includes( values[ TEST_INDEX ] ),
 						tree: node.tree
 					};
 				});
@@ -1460,22 +1495,24 @@ describe( 'Tree', () => {
 				} );
 			} );
 			describe( 'free(...)', () => {
-				let preFreeState = {};
-				let postFreeState = {};
-				let returnVal, node, tree;
+				let preFreeState = {} as State<number>;
+				let postFreeState = {} as State<number>;
+				let node : TreeNode<number>;
+				let returnVal : TreeNode<number>;
+				let tree : Tree<number>;
 				beforeAll(() => {
 					const TEST_INDEX = 3;
 					tree = new Tree( values );
 					node = tree.getNodeAt( TEST_INDEX );
 					preFreeState = {
 						detached: node.isDetached,
-						isInTree: tree.values.includes( values[ TEST_INDEX ]),
+						isInTree: [ ...tree.values ].includes( values[ TEST_INDEX ]),
 						tree: node.tree
 					};
 					returnVal = node.free();
 					postFreeState = {
 						detached: node.isDetached,
-						isInTree: tree.values.includes( values[ TEST_INDEX ]),
+						isInTree: [ ...tree.values ].includes( values[ TEST_INDEX ]),
 						tree: node.tree
 					};
 				});
@@ -1509,7 +1546,7 @@ describe( 'Tree', () => {
 				} );
 			} );
 			describe( '*genAncestors(...)', () => {
-				/** @type {TreeNode<number>} */ let node;
+				let node : TreeNode<number>;
 				beforeAll(() => { node = tree.getNodeAt( 0 ) });
 				afterAll(() => { node = null });
 				test( 'returns a generator', () => {
@@ -1532,7 +1569,7 @@ describe( 'Tree', () => {
 				} );
 			} );
 			describe( '*genDescendants(...)', () => {
-				/** @type {TreeNode<number>} */ let node;
+				let node : TreeNode<number>;
 				beforeAll(() => { node = tree.getNodeAt( 11 ) });
 				afterAll(() => { node = null });
 				test( 'returns a generator', () => {
@@ -1555,7 +1592,7 @@ describe( 'Tree', () => {
 				} );
 			} );
 			describe( '*genParentsUntil(...)', () => {
-				/** @type {TreeNode<number>} */ let node;
+				let node : TreeNode<number>;
 				beforeAll(() => { node = tree.getNodeAt( 0 ) });
 				afterAll(() => { node = null });
 				test( 'returns a generator', () => {
@@ -1580,7 +1617,7 @@ describe( 'Tree', () => {
 				} );
 			} );
 			describe( 'getAncestors(...)', () => {
-				/** @type {TreeNode<number>} */ let node;
+				let node : TreeNode<number>;
 				beforeAll(() => { node = tree.getNodeAt( 0 ) });
 				afterAll(() => { node = null });
 				test( 'returns ancestors up to the tree root by default', () => {
@@ -1591,7 +1628,7 @@ describe( 'Tree', () => {
 				} );
 			} );
 			describe( 'getDescendants(...)', () => {
-				/** @type {TreeNode<number>} */ let node;
+				let node : TreeNode<number>;
 				beforeAll(() => { node = tree.getNodeAt( 11 ) });
 				afterAll(() => { node = null });
 				test( 'returns descendants down to the leaves by default', () => {
@@ -1602,7 +1639,7 @@ describe( 'Tree', () => {
 				} );
 			} );
 			describe( 'getParentsUntil(...)', () => {
-				/** @type {TreeNode<number>} */ let node;
+				let node : TreeNode<number>;
 				beforeAll(() => { node = tree.getNodeAt( 0 ) });
 				afterAll(() => { node = null });
 				test( 'returns parents up to the tree root by default', () => {
@@ -1619,7 +1656,7 @@ describe( 'Tree', () => {
 			describe( 'join(...)', () => {
 				describe( '***', () => {
 					test( 'returns self', () => {
-						/** @type {Tree<number>} */ let tree = new Tree([ 2, 4 ]);
+						let tree = new Tree([ 2, 4 ]);
 						const detachedNode = tree.getNodeAt( 1 ).detach();
 						let treeInsertNodeSpy = jest
 							.spyOn( tree, 'insertNode' )
@@ -1629,24 +1666,24 @@ describe( 'Tree', () => {
 						treeInsertNodeSpy = null;
 					})
 					test( 'rejoins detached node back onto the tree', () => {
-						/** @type {Tree<number>} */ let tree = new Tree([ 3, 6, 9, 17 ]);
+						let tree = new Tree([ 3, 6, 9, 17 ]);
 						const detachedNode = tree.getNodeAt( 2 );
 						expect( detachedNode.isDetached ).toBe( false );
-						expect( tree.values.includes( detachedNode.value) ).toBe( true );
+						expect([ ...tree.values ].includes( detachedNode.value) ).toBe( true );
 						detachedNode.detach();
 						expect( detachedNode.isDetached ).toBe( true );
-						expect( tree.values.includes( detachedNode.value) ).toBe( false );
+						expect([ ...tree.values ].includes( detachedNode.value) ).toBe( false );
 						detachedNode.join();
 						expect( detachedNode.isDetached ).toBe( false );
-						expect( tree.values.includes( detachedNode.value) ).toBe( true );
+						expect([ ...tree.values ].includes( detachedNode.value) ).toBe( true );
 						tree = null;
 					} );
 				} );
 				test( 'attempt to join undetached node to the tree is a noop', () => {
-					/** @type {Tree<number>} */ let tree = new Tree([ 1, 2]);
+					let tree = new Tree([ 1, 2 ]);
 					const node = tree.getNodeAt( 0 );
 					expect( node.isDetached ).toBe( false );
-					expect( tree.values.includes( node.value) ).toBe( true );
+					expect([ ...tree.values ].includes( node.value ) ).toBe( true );
 					let treeInsertNodeSpy = jest.spyOn( tree, 'insertNode' );
 					node.join();
 					expect( node.isDetached ).toBe( false );
@@ -1655,13 +1692,13 @@ describe( 'Tree', () => {
 					treeInsertNodeSpy = tree = null;
 				} );
 				test( 'throws on attempt to join a free node to the tree', () => {
-					/** @type {Tree<number>} */ let tree = new Tree([ 1, 3, 7 ]);
+					let tree = new Tree([ 1, 3, 7 ]);
 					const detachedNode = tree.getNodeAt( 2 );
 					expect( detachedNode.isFree ).toBe( false );
-					expect( tree.values.includes( detachedNode.value) ).toBe( true );
+					expect([ ...tree.values ].includes( detachedNode.value )).toBe( true );
 					detachedNode.free();
 					expect( detachedNode.isFree ).toBe( true );
-					expect( tree.values.includes( detachedNode.value) ).toBe( false );
+					expect([ ...tree.values ].includes( detachedNode.value )).toBe( false );
 					expect(() => { detachedNode.join() }).toThrow( ReferenceError );
 					expect(() => { detachedNode.join() }).toThrow(
 						'Cannot join node. Referenced tree does not exist.'

@@ -11,13 +11,18 @@
     // This compiler run should
     // only output d.ts files
     "emitDeclarationOnly": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "moduleResolution": "nodenext",
+    "module": "nodenext",
     "lib": [ "ES2020", "ES2021.WeakRef" ],
     // Types should go into this directory.
     // Removing this would place the .d.ts files
     // next to the .js files
     "outDir": "dist",
     "removeComments": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "target": "es2015"
   },
   // Change the following to match your project
   "exclude": [
